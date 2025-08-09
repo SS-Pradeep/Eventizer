@@ -1,0 +1,144 @@
+/* Body styling */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #6f9cc1;
+}
+
+/* Outer container */
+.signup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+/* Main white card */
+.Signupbase {
+  background-color: white;
+  padding: 40px 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  width: 350px;
+  text-align: center;
+}
+
+/* Heading */
+.Signupbase h1 {
+  margin-bottom: 25px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Labels */
+.signupform label {
+  display: block;
+  text-align: left;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Inputs */
+.signupform input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Submit button */
+.buttonforsignup {
+  width: 100%;
+  padding: 12px;
+  background-color: #336699;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+}
+
+.buttonforsignup:hover {
+  background-color: #2b5b85;
+}
+
+/* Google signup section */
+.Signupwithgoogle {
+  margin-top: 20px;
+}
+
+.googlesignupbutton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 300px;
+  padding: 10px;
+  background-color: white;
+  color: #6f9cc1;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  position: relative;
+}
+
+.googlesignupbutton img {
+  position: absolute;
+  left: 15px;
+  height: 24px;
+  width: 24px;
+}
+
+.googlesignupbutton:hover {
+  background-color: #ffffff;
+}
+
+/* Login and Admin buttons */
+.login,
+.signupforadmin {
+  margin-top: 15px;
+}
+
+.login button,
+.signupforadminbutton {
+  width: 150px;
+  padding: 10px;
+  font-size: 15px;
+  font-weight: bold;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background-color: white;
+  color: #336699;
+  border: 2px solid #336699;
+  transition: all 0.3s ease;
+}
+
+.login button:hover,
+.signupforadminbutton:hover {
+  background-color: #336699;
+  color: white;
+}
+
+.login {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+
+.signupforadmin {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}

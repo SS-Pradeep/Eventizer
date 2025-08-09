@@ -1,0 +1,132 @@
+/* Body styling */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  
+}
+
+.signupadmin {
+  display: flex;
+  justify-content: center;
+  background-color: #ef6563;
+  align-items: center;
+  min-height: 100vh;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Main white card */
+.Signupbaseadmin {
+  background-color: white;
+  padding: 40px 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  width: 350px;
+  text-align: center;
+}
+
+/* Heading */
+.Signupbaseadmin h1 {
+  margin-bottom: 25px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Labels */
+.signupformadmin label {
+  display: block;
+  text-align: left;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Inputs */
+.signupformadmin input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Submit button */
+.buttonforsignupadmin {
+  width: 100%;
+  padding: 12px;
+  background-color: #ef5653;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+}
+
+.buttonforsignupadmin:hover {
+  background-color: #ef6563;
+}
+
+.Signupwithgoogleadmin {
+  margin-top: 20px;
+}
+
+.googlesignupbuttonadmin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 300px;
+  padding: 10px;
+  background-color: white;
+  color: #ef6563;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  position: relative;
+}
+
+.googlesignupbuttonadmin img {
+  position: absolute;
+  left: 15px;
+  height: 24px;
+  width: 24px;
+}
+
+.googlesignupbuttonadmin:hover {
+  background-color: #ffffff;
+}
+
+
+.back {
+  width: 150px;
+  padding: 10px;
+  font-size: 15px;
+  font-weight: bold;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background-color: white;
+  color: #ef6563;
+  border: 2px solid #ef6563;
+  position: absolute;
+  margin: 20;
+  left: 20px;
+  transition: all 0.3s ease;
+}
+
+
+.back:hover {
+  background-color: #e83a37;
+  color: white;
+}
+
+
+
