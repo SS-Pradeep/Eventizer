@@ -25,6 +25,7 @@ function Signup() {
     try {
       const userCred = await signInWithPopup(auth, provider);
       const userEmail = userCred.user.email;
+      const uid = userCredential.user.uid;
 
       const isadmin = userEmail.endsWith("@tce.edu");
       const isstudent = userEmail.endsWith("@student.tce.edu");
@@ -37,9 +38,9 @@ function Signup() {
       console.log('Google user signed in:', userCred.user);
       setsuccess(true);
       if (isadmin) {
-      navigate("/admin"); 
+      navigate("/admin",{state:{uid}}); 
     } else if (isstudent) {
-      navigate("/profilefill"); 
+      navigate("/profilefill",{state:{uid}}); 
     }
     } catch (err) {
       seterror(err.message);
@@ -61,15 +62,16 @@ function Signup() {
     }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
       console.log('User signed up:', userCredential.user);
       setsuccess(true);
       if(isadmin)
       {
-        navigate('/admin');
+        navigate('/admin',{state:{uid}});
       }
       else if(isstudent)
       {
-        navigate('/profilefill');
+        navigate('/profilefill',{state:{uid}});
       }
       
       

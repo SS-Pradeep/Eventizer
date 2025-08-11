@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { use,useState } from "react";
-
+import {useLocation} from "react-router-dom";
 const Profilefill = ()=>{
-
+    const location = useLocation();
+    const uid = location.state?.uid;
     var filled = false;
-      navigate = useNavigate();
+    navigate = useNavigate();
 
       const [Name,Setname] = useState('');
       const [Rollnumber , SetRollNumber] = useState('');
@@ -13,9 +14,39 @@ const Profilefill = ()=>{
       const [success,setsuccess] = useState(false);
 
       const handlesubmit = async (e)=>{
+        e.preventDefault();
         filled = true;
+        seterror(null);
+        setsuccess(false);
+        const data = {
+            uid,
+            name: Name,
+            rollNumber: Rollnumber,
+            graduationYear: year
+        };
+         
+        try {
+            const response = await fetch("http://localhost:3000/studentregister", { 
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to save profile");
+            }
+
+            setsuccess(true);
+           
+        } catch (err) {
+            seterror(err.message);
+            console.error(err);
+        }
         navigate('/student');
-      }
+    };
+        
 
     return(
         <>
@@ -40,5 +71,4 @@ const Profilefill = ()=>{
         </>
     )
 }
-
 export default Profilefill;
