@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { use,useState } from "react";
 import {useLocation} from "react-router-dom";
+import myImage from './assets/arrow.png';
 import './profilefill.css';
 const Profilefill = ()=>{
     const location = useLocation();
@@ -40,35 +41,38 @@ const Profilefill = ()=>{
             }
 
             setsuccess(true);
-           
+            
         } catch (err) {
             seterror(err.message);
             console.error(err);
         }
         navigate('/student');
+        
     };
         
 
     return(
         <>
         <div className="profilefill">
-            <form onSubmit={handlesubmit}>
+            <div className="left-half"></div>
+            <div className="right-half">
+            <form className="form-container"  onSubmit={handlesubmit}>
             <div>
-                <label>Name:</label>
-        <input type='text' className='Name' value={Name} onChange={(e)=>Setname(e.target.value)} required/>
+                <label>Name:</label><br></br>
+        <input type='text' className='Name' value={Name} onChange={(e)=>Setname(e.target.value)} required/><br></br>
 
-        <label>Roll Number:</label>
-        <input type='text' className='Rollnumber' value={Rollnumber} onChange={(e)=>SetRollNumber(e.target.value)} required/>
+        <label>Roll Number:</label><br></br>
+        <input type='text' className='Rollnumber' value={Rollnumber} onChange={(e)=>SetRollNumber(e.target.value)} required/><br></br>
 
-        <label>Graduation Year:</label>
-        <input type='number' className='Graduationyear' value={year} onChange={(e)=>setyear(e.target.value)} required/>
+        <label>Graduation Year:</label><br></br>
+        <input type='number' className='Graduationyear' value={year} onChange={(e)=>setyear(e.target.value)} required/><br></br>
 
                 <button className="continue">
-                    <h2>continue</h2>
+                    <img src={myImage} alt="continue" height="30px" width="30px"/>
                 </button>
             </div>
             </form>
-        </div>
+        </div></div>
         </>
     )
 }
