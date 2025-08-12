@@ -1,4 +1,4 @@
-import { signInWithPopup , GoogleAuthProvider ,createUserWithEmailAndPassword} from 'firebase/auth';
+import { signInWithPopup , GoogleAuthProvider ,createUserWithEmailAndPassword, signInWithEmailAndPassword} from 'firebase/auth';
 import auth from './config/firebase-config';
 import './signupforadmin.css';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import download from './assets/download.png'
 
 function Signupforadmin() {
 
+    const navigate = useNavigate();
     const [error,seterror]  = useState(null);
     const [success,setsuccess] = useState(false);
     const [email,setemail] = useState('');
@@ -64,16 +65,17 @@ function Signupforadmin() {
     }
     
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('User signed up:', userCredential.user);
       setsuccess(true);
+      navigate('/profilefill');
     } catch (err) {
       seterror(err.message);
-      console.error('Signup error', err);
+      console.error('Signin error', err);
     }
   };
 
-  const navigate = useNavigate();
+ 
   const Gottoback = ()=>{
     navigate('/');
   };

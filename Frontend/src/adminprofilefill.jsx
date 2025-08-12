@@ -1,12 +1,12 @@
 
 import { useNavigate } from "react-router-dom";
-import { use,useState } from "react";
+import { useState } from "react";
 import {useLocation} from "react-router-dom";
 const Adminprofilefill = ()=>{
     const location = useLocation();
     const uid = location.state?.uid;
     var filled = false;
-    navigate = useNavigate();
+    const navigate = useNavigate();
 
       const [Name,Setname] = useState('');
       const [Email , SetEmail] = useState('');
@@ -38,6 +38,7 @@ const Adminprofilefill = ()=>{
             }
 
             setsuccess(true);
+            navigate('/adminprofile');
            
         } catch (err) {
             seterror(err.message);
@@ -56,7 +57,7 @@ const Adminprofilefill = ()=>{
         <input type='text' className='Name' value={Name} onChange={(e)=>Setname(e.target.value)} required/>
 
         <label>Email:</label>
-        <input type='text' className='Rollnumber' value={Rollnumber} onChange={(e)=>SetEmail(e.target.value)} required/>
+        <input type='text' className='Rollnumber' value={Email} onChange={(e)=>SetEmail(e.target.value)} required/>
         
                 <button className="continue">
                     <h2>continue</h2>

@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { use,useState } from "react";
 import {useLocation} from "react-router-dom";
+import './profilefill.css';
 const Profilefill = ()=>{
     const location = useLocation();
     const uid = location.state?.uid;
     var filled = false;
-    navigate = useNavigate();
+    const navigate = useNavigate();
 
       const [Name,Setname] = useState('');
       const [Rollnumber , SetRollNumber] = useState('');

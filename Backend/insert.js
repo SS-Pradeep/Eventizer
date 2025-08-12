@@ -1,15 +1,15 @@
 const {Pool} = require('pg');  
 const express = require('express');
-
+require('dotenv').config();
 const app = express();
 app.use(express.json());
 
 const pool = new Pool({
-    host : process.env.host,
-    user : process.env.user,
-    port : process.env.port,
-    password : process.env.password, 
-    database : process.env.database
+    host : '127.0.0.1',
+    user : 'postgres',
+    port : 5432,
+    password : 'Pradeep007', 
+    database : 'Demodb'
 });
 
 pool.connect().then(()=>console.log("YEah.."));
@@ -303,7 +303,7 @@ app.get('/participation-percent/:year', async (req, res) => {
 });
 
 
-
-app.listen(process.env.PORT,()=>{
+const PORT = 5432;
+app.listen(PORT,()=>{
     console.log("Listening" + {PORT});
 });
