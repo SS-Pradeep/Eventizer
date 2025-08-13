@@ -1,0 +1,59 @@
+/* Main container */
+.main {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Left sidebar */
+#left {
+    background-color: #6f9cc1;
+    width: 25%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px; /* space between items */
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+/* Profile image */
+#left img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid white;
+}
+
+/* Sidebar buttons */
+#left button {
+    width: 100%;
+    padding: 12px;
+    background-color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+#left button:hover {
+    background-color: #4f89b5;
+    color: white;
+}
+
+/* Right content */
+#right {
+    background-color: white;
+    flex: 1; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    padding: 20px;
+}

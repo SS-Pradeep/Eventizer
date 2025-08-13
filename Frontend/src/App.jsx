@@ -16,9 +16,9 @@ const App = ()=> {
                 <Route path="/" element={<Signup/>}/>
                 <Route path="/profilefill" element={<Profilefill/>}/>
                 <Route path="/login" element={<Signupforadmin/>}/>
-                <Route path="/student" element={<Studentprofile/>}/>
+                <Route path="/profilefill/student/:uid" element={<Studentprofile/>}/>
                 <Route path="/admin" element={<Adminprofilefill/>}/>
-                <Route path="/adminprofile" element={<Adminpage/>}/>
+                <Route path="/admin/adminprofile/:uid" element={<Adminpage/>}/>
             </Routes>
         </div>
         </>

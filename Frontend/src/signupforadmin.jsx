@@ -18,13 +18,12 @@ function Signupforadmin() {
     const loginwithgoogle = async () => {
     seterror(null);
     const provider = new GoogleAuthProvider();
-
-
-    
     try {
 
       const userCred = await signInWithPopup(auth, provider);
       const userEmail = userCred.user.email;
+      const uid = userCred.user.uid;
+      
 
       const isadmin = userEmail.endsWith("@tce.edu");
       const isstudent = userEmail.endsWith("@student.tce.edu");
@@ -36,13 +35,29 @@ function Signupforadmin() {
 
       console.log('Google user signed in:', userCred.user);
       setsuccess(true);
+      try{
+      const checkUser = async () => {
+    const res = await fetch('http://localhost:3000//check-uid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    });
+
+    const exists = await res.json(); // true or false
+
+    if (exists && isadmin) {
+      navigate(`/admin/adminprofile/:uid`); // User exists → go here
+    } else if(exists && isstudent){
+      navigate(`/profilefill/student/:uid`);  // User not found → go here
+    }
+  };}
+  catch (err){
+    console.log("PP");
+  }
       if (isadmin) {
       navigate("/admin"); 
-    } if (isstudent && filled) {
+    } if (isstudent ) {
       navigate("/student"); 
-    }
-    else{
-      navigate('/profilefill');
     }
 
     } catch (err) {
@@ -66,9 +81,35 @@ function Signupforadmin() {
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
       console.log('User signed up:', userCredential.user);
       setsuccess(true);
-      navigate('/profilefill');
+       try{
+      const checkUser = async () => {
+    const res = await fetch('http://localhost:3000//check-uid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    });
+
+    const exists = await res.json(); // true or false
+
+    if (exists && isadmin) {
+      navigate(`/admin/adminprofile/:uid`); // User exists → go here
+    } else if(exists && isstudent){
+      navigate(`/profilefill/student/:uid`);  // User not found → go here
+    }
+  };}
+  catch (err){
+    console.log("PP");
+  }
+      if(isadmin){
+        navigate('/admin',{ state: { uid } });
+      }
+      else{
+        navigate('/profilefill',{ state: { uid } });
+      }
+      
     } catch (err) {
       seterror(err.message);
       console.error('Signin error', err);

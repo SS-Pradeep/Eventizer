@@ -1,27 +1,47 @@
 
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import {useLocation} from "react-router-dom";
-const Adminprofilefill = ()=>{
-    const location = useLocation();
-    const uid = location.state?.uid;
-    var filled = false;
-    const navigate = useNavigate();
+import myImage from './assets/arrow.png';
+import './adminprofilefill.css';
+import { useState, useEffect } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
+const Adminprofilefill = ()=>{
+
+
+    const navigate = useNavigate();
+      const [uid,Setuid] = useState('');
       const [Name,Setname] = useState('');
       const [Email , SetEmail] = useState('');
       const [error,seterror] = useState(null);
       const [success,setsuccess] = useState(false);
+      const [loading, setLoading] = useState(true);
+      
+    useEffect(() => {
+              const auth = getAuth();
+              const unsubscribe = onAuthStateChanged(auth, (user) => {
+                  if (user) {
+                      Setuid(user.uid); } 
+                  else {
+                      navigate("/login");}
+                      setLoading(false);
+                      
+              });
+        return unsubscribe;
+      }, [navigate]);
 
+      if (loading) {
+    return <p>Loading...</p>;
+}
+      
       const handlesubmit = async (e)=>{
         e.preventDefault();
-        filled = true;
+        
         seterror(null);
         setsuccess(false);
         const data = {
+            firebase_uid: uid,
             name: Name,
-            uid,
-            email: Email
+            email : Email
         };
          
         try {
@@ -37,21 +57,25 @@ const Adminprofilefill = ()=>{
                 throw new Error("Failed to save profile");
             }
 
+            console.log("Navigating to:", `/admin/adminprofile/${uid}`);
+            navigate(`/admin/adminprofile/${uid}`);
+
             setsuccess(true);
-            navigate('/adminprofile');
+            
            
         } catch (err) {
             seterror(err.message);
             console.error(err);
         }
-        navigate('/admin');
     };
         
 
     return(
         <>
-        <div className="Adminfill">
-            <form onSubmit={handlesubmit}>
+        <div className="profilefill">
+            <div className="left-half"></div>
+            <div className="right-half">
+            <form className="form-container" onSubmit={handlesubmit}>
             <div>
                 <label>Name:</label>
         <input type='text' className='Name' value={Name} onChange={(e)=>Setname(e.target.value)} required/>
@@ -59,11 +83,13 @@ const Adminprofilefill = ()=>{
         <label>Email:</label>
         <input type='text' className='Rollnumber' value={Email} onChange={(e)=>SetEmail(e.target.value)} required/>
         
-                <button className="continue">
-                    <h2>continue</h2>
+                <button type="submit" className="continue">
+                    <img src={myImage} alt="continue" height="30px" width="30px"/>
+                    
                 </button>
             </div>
             </form>
+            </div>
         </div>
         </>
     )

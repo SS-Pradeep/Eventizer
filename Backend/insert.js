@@ -41,14 +41,14 @@ app.post('/eventregister', async (req,res)=>{
 app.post('/studentregister', async (req,res)=>{
 
     const {firebase_uid,name,roll_number,graduation_year,profileupdated} = req.body;
-    console.log(uid, roll_number, year);
+
 
     try {
         const Client = await pool.connect();
         const insert_query = "INSERT INTO student (name,firebase_uid,roll_number,graduation_year,profileupdated) values($1,$2,$3,$4,$5)";
         const values = [name,firebase_uid,roll_number,graduation_year,profileupdated];
         const result = await Client.query(insert_query, values);
-
+        res.status(200).send({ message: "Insert successful" });
     } 
     catch (err) {
     console.error(err);
@@ -60,13 +60,13 @@ app.post('/studentregister', async (req,res)=>{
 //after admin signin
 app.post('/adminregister', async (req,res)=>{
 
-    const {name,firebase_url,email} = req.body;
+    const {name,firebase_uid,email} = req.body;
     try {
         const Client = await pool.connect();
-        const insert_query = "INSERT INTO student (name,firebase_url,email) values($1,$2,$3)";
-        const values = [name,firebase_url,email];
+        const insert_query = "INSERT INTO admin (name,firebase_uid,email) values($1,$2,$3)";
+        const values = [name,firebase_uid,email];
         const result = await Client.query(insert_query, values);
-        
+        res.status(200).send({ message: "Insert successful" }); 
     } 
     catch (err) {
     console.error(err);
@@ -308,7 +308,21 @@ app.get('/participation-percent/:year', async (req, res) => {
   }
 });
 
+app.post('/check-uid', async (req, res) => {
+  const { uid } = req.body;
 
+  try {
+    const result = await pool.query(
+      'SELECT * FROM ADMIN WHERE uid = $1)',
+      [uid]
+    );
+
+    res.json(result.rows[0].exists);
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json(false); 
+  }
+});
 const PORT = 3000;
 app.listen(PORT,()=>{
     console.log("Listening" + PORT);

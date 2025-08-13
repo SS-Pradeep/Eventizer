@@ -1,33 +1,45 @@
 import { useNavigate } from "react-router-dom";
-import { use,useState } from "react";
-import {useLocation} from "react-router-dom";
+import { useEffect , useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import myImage from './assets/arrow.png';
 import './profilefill.css';
 const Profilefill = ()=>{
-    const location = useLocation();
-    const uid = location.state?.uid;
-    var filled = false;
+    
     const navigate = useNavigate();
-
+      
+      const [uid,Setuid] = useState('');
       const [Name,Setname] = useState('');
       const [Rollnumber , SetRollNumber] = useState(0);
       const [year,setyear] = useState('');
       const [error,seterror] = useState(null);
       const [success,setsuccess] = useState(false);
       const [profileupdated,setprofile] = useState(false);
+
+      useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                Setuid(user.uid); } 
+            else {
+                navigate("/login");}
+        });
+  return unsubscribe;
+}, [navigate]);
+
+
       const handlesubmit = async (e)=>{
         e.preventDefault();
-        filled = true;
         seterror(null);
         setsuccess(false);
         setprofile(true);
         const data = {
-            uid,
+            firebase_uid: uid,
             name: Name,
-            rollNumber: Rollnumber,
-            graduationYear: year,
-            profileupdated : true
+            roll_number: Rollnumber,
+            graduation_year: year,
+            profileupdated: true
         };
+
          
         try {
             console.log(uid, Rollnumber, year);
@@ -44,12 +56,12 @@ const Profilefill = ()=>{
             }
 
             setsuccess(true);
-            navigate('/student');
+            navigate(`student/${uid}`);
         } catch (err) {
             seterror(err.message);
             console.error(err);
         }
-        
+
         
     };
         
@@ -70,7 +82,7 @@ const Profilefill = ()=>{
         <label>Graduation Year:</label><br></br>
         <input type='number' className='Graduationyear' value={year} onChange={(e)=>setyear(e.target.value)} required/><br></br>
 
-                <button className="continue">
+                <button className="continue" disabled={!uid}>
                     <img src={myImage} alt="continue" height="30px" width="30px"/>
                 </button>
             </div>
