@@ -1,8 +1,12 @@
 const {Pool} = require('pg');  
 const express = require('express');
+const cors = require('cors');
 require('dotenv').config();
 const app = express();
 app.use(express.json());
+app.use(cors({
+  origin: '*'
+}));
 
 const pool = new Pool({
     host : '127.0.0.1',
@@ -36,11 +40,13 @@ app.post('/eventregister', async (req,res)=>{
 //after student signin
 app.post('/studentregister', async (req,res)=>{
 
-    const {name,firebase_url,roll_number,graduation_year} = req.body;
+    const {firebase_uid,name,roll_number,graduation_year,profileupdated} = req.body;
+    console.log(uid, roll_number, year);
+
     try {
         const Client = await pool.connect();
-        const insert_query = "INSERT INTO student (name,firebase_url,roll_number,graduation_year) values($1,$2,$3,$4)";
-        const values = [name,firebase_url,roll_number,graduation_year];
+        const insert_query = "INSERT INTO student (name,firebase_uid,roll_number,graduation_year,profileupdated) values($1,$2,$3,$4,$5)";
+        const values = [name,firebase_uid,roll_number,graduation_year,profileupdated];
         const result = await Client.query(insert_query, values);
 
     } 
@@ -303,7 +309,7 @@ app.get('/participation-percent/:year', async (req, res) => {
 });
 
 
-const PORT = 5432;
+const PORT = 3000;
 app.listen(PORT,()=>{
-    console.log("Listening" + {PORT});
+    console.log("Listening" + PORT);
 });

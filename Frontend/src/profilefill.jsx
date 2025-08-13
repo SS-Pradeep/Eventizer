@@ -10,24 +10,27 @@ const Profilefill = ()=>{
     const navigate = useNavigate();
 
       const [Name,Setname] = useState('');
-      const [Rollnumber , SetRollNumber] = useState('');
+      const [Rollnumber , SetRollNumber] = useState(0);
       const [year,setyear] = useState('');
       const [error,seterror] = useState(null);
       const [success,setsuccess] = useState(false);
-
+      const [profileupdated,setprofile] = useState(false);
       const handlesubmit = async (e)=>{
         e.preventDefault();
         filled = true;
         seterror(null);
         setsuccess(false);
+        setprofile(true);
         const data = {
             uid,
             name: Name,
             rollNumber: Rollnumber,
-            graduationYear: year
+            graduationYear: year,
+            profileupdated : true
         };
          
         try {
+            console.log(uid, Rollnumber, year);
             const response = await fetch("http://localhost:3000/studentregister", { 
                 method: "POST",
                 headers: {
@@ -41,12 +44,12 @@ const Profilefill = ()=>{
             }
 
             setsuccess(true);
-            
+            navigate('/student');
         } catch (err) {
             seterror(err.message);
             console.error(err);
         }
-        navigate('/student');
+        
         
     };
         
@@ -62,7 +65,7 @@ const Profilefill = ()=>{
         <input type='text' className='Name' value={Name} onChange={(e)=>Setname(e.target.value)} required/><br></br>
 
         <label>Roll Number:</label><br></br>
-        <input type='text' className='Rollnumber' value={Rollnumber} onChange={(e)=>SetRollNumber(e.target.value)} required/><br></br>
+        <input type='number' className='Rollnumber' value={Rollnumber} onChange={(e)=>SetRollNumber(e.target.value)} required/><br></br>
 
         <label>Graduation Year:</label><br></br>
         <input type='number' className='Graduationyear' value={year} onChange={(e)=>setyear(e.target.value)} required/><br></br>
