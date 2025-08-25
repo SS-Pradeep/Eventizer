@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import './adminpage.css';
+import myImage from './assets/student.jpg';
 const Adminpage = () => {
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
@@ -24,12 +25,16 @@ const Adminpage = () => {
 
     return (
         <>
-            <div id="navbar">
+        <div className="main">
+            <div id="adminleft">
+                <button className="profile" onClick={() => navigate("/profile")}>
+          <img src={myImage} alt="profile"/>
+        </button>
                 <button className="btn" onClick={() => navigate('/search')}>Search</button>
                 <button className="btn" onClick={() => navigate('/permission')}>Permission</button>
                 <button className="btn" onClick={() => navigate('/dashboard')}>Dashboard</button>
             </div>
-            <div id="notification">
+            <div id="adminright">
                 {error && <p style={{ color: "red" }}>{error}</p>}
                 {notifications.length > 0 ? (
                     notifications.map((n, i) => (
@@ -42,7 +47,7 @@ const Adminpage = () => {
                 ) : (
                     <p>No notifications yet.</p>
                 )}
-            </div>
+            </div></div>
         </>
     );
 };

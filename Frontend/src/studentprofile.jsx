@@ -57,7 +57,7 @@ const Studentprofile = () => {
       <div id="right">
         <button
           id="createevent"
-          onClick={() => navigate("/createanevent")}
+          onClick={() => navigate("/createevent")}
         >
           +
         </button>

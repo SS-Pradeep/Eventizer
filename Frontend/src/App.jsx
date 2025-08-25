@@ -6,6 +6,7 @@ import Profilefill from "./profilefill";
 import Studentprofile from "./studentprofile";
 import Adminprofilefill from "./adminprofilefill";
 import Adminpage from "./adminpage";
+import Createevent from "./createevent";
 
 
 const App = ()=> {
@@ -19,6 +20,7 @@ const App = ()=> {
                 <Route path="/profilefill/student/:uid" element={<Studentprofile/>}/>
                 <Route path="/admin" element={<Adminprofilefill/>}/>
                 <Route path="/admin/adminprofile/:uid" element={<Adminpage/>}/>
+                <Route path="/createevent" element={<Createevent/>}/>
             </Routes>
         </div>
         </>

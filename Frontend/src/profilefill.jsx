@@ -39,8 +39,7 @@ const Profilefill = ()=>{
             graduation_year: year,
             profileupdated: true
         };
-
-         
+        
         try {
             console.log(uid, Rollnumber, year);
             const response = await fetch("http://localhost:3000/studentregister", { 
@@ -61,8 +60,6 @@ const Profilefill = ()=>{
             seterror(err.message);
             console.error(err);
         }
-
-        
     };
         
 
