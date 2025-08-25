@@ -16,6 +16,9 @@ const Createevent = ()=>{
 
     const handlesubmit = async (e)=>{
         e.preventDefault();
+        if((event_level!= "Intra college" && event_level!="Inter college") || event_level == "Hackathon"){
+          SetPermission(true);
+        }
           const data = {
             name : event_name,
             event_type : eventype,
@@ -35,19 +38,47 @@ const Createevent = ()=>{
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(data)
+              }
 
-                
-            }
           );
+
 
           if (!response.ok) {
                 throw new Error("Failed to Register for an event ");
             }
 
-          
+           
+
+
             setsuccess(true);
-            navigate('/letterconformation');
+            
           }
+        catch(err){
+          console.log(err);
+        }
+
+        try{
+           const pdf_data = {
+               name : event_name,
+            event_type : eventype,
+            st_date : st_date,
+            end_date : end_date,
+            event_level : event_level,
+            organizer : Organizer
+            };
+
+            const response = await fetch("http://localhost:3000/upload_pdf", { 
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+              });
+
+
+
+
+        }
         catch(err){
           console.log(err);
         }
@@ -112,26 +143,7 @@ const Createevent = ()=>{
       </label>
       <br />
 
-      {/* Permission Required */}
-      <label>
-        Permission Required:
-        <input
-          type="checkbox"
-          checked={permissionrequired}
-          onChange={(e) => SetPermission(e.target.checked)}
-        />
-      </label>
-      <br />
-
-      {/* Certificate Upload */}
-      <label>
-        Certificate Upload Required:
-        <input
-          type="checkbox"
-          checked={Certificateupload}
-          onChange={(e) => SetCertificate(e.target.checked)}
-        />
-      </label>
+      
       <br />
 
       {/* Organizer */}

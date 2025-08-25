@@ -1,5 +1,7 @@
 const {Pool} = require('pg');  
 const express = require('express');
+const puppeteer = require('puppeteer');
+const Minio = require('minio');
 const cors = require('cors');
 require('dotenv').config();
 const app = express();
@@ -323,7 +325,257 @@ app.post('/check-uid', async (req, res) => {
     res.status(500).json(false); 
   }
 });
+app.post('/upload_pdf', async (req, res) => {
+  const Minio = require('minio');
+  const puppeteer = require('puppeteer');
+
+  // Initialize MinIO client
+  const minioClient = new Minio.Client({
+    endPoint: process.env.MINIO_ENDPOINT || 'localhost',
+    port: parseInt(process.env.MINIO_PORT) || 9000,
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY,
+    secretKey: process.env.MINIO_SECRET_KEY
+  });
+
+  const client = await pool.connect();
+
+  try {
+    // Start database transaction
+    await client.query('BEGIN');
+
+    // Extract data from request body
+    const { st_date, end_date, reason, request_id } = req.body;
+    const bucketName = 'pdf-documents';
+
+    // Validation
+    if (!st_date || !end_date || !reason || !request_id) {
+      return res.status(400).json({
+        error: 'Missing required fields: st_date, end_date, reason, request_id'
+      });
+    }
+
+    // Step 1: Generate PDF buffer using Puppeteer
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    await page.setContent(`
+      <html>
+        <head>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 40px; 
+              line-height: 1.8; 
+            }
+            .header { text-align: center; margin-bottom: 30px; }
+            .content { text-align: justify; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>Leave Request Application</h2>
+            <p>Date: ${new Date().toLocaleDateString()}</p>
+          </div>
+          <div class="content">
+            <p>Dear Sir/Madam,</p>
+            <p>I am writing to formally request leave from <strong>${st_date}</strong> to <strong>${end_date}</strong> due to <strong>${reason}</strong>.</p>
+            <p>I will ensure that all my current tasks are either completed or delegated before my leave begins.</p>
+            <p>Thank you for your consideration.</p>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '1in', right: '1in', bottom: '1in', left: '1in' }
+    });
+
+    await browser.close();
+
+    // Step 2: Check if bucket exists, create if not
+    const bucketExists = await minioClient.bucketExists(bucketName);
+    if (!bucketExists) {
+      await minioClient.makeBucket(bucketName, 'us-east-1');
+    }
+
+    // Step 3: Generate unique filename (this becomes file_key)
+    const fileKey = `leave-request-${request_id}-${Date.now()}.pdf`;
+
+    // Step 4: Upload PDF buffer to MinIO
+    const uploadResult = await minioClient.putObject(
+      bucketName,
+      fileKey,
+      pdfBuffer,
+      pdfBuffer.length,
+      {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${fileKey}"`
+      }
+    );
+
+    // Step 5: Generate file URL
+    const fileUrl = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${bucketName}/${fileKey}`;
+
+    // Step 6: Insert file_key and url into database
+    const insertQuery = `
+      INSERT INTO Permission_letters (request_id, file_key, url) 
+      VALUES ($1, $2, $3) 
+      RETURNING letter_id
+    `;
+
+    const dbResult = await client.query(insertQuery, [request_id, fileKey, fileUrl]);
+    const letterId = dbResult.rows[0].letter_id;
+
+    // Commit transaction
+    await client.query('COMMIT');
+
+    console.log('PDF uploaded and database updated successfully');
+    
+    // Step 7: Return success response
+    res.status(200).json({
+      success: true,
+      message: 'PDF generated, uploaded, and saved to database successfully',
+      data: {
+        letter_id: letterId,
+        request_id: request_id,
+        file_key: fileKey,
+        url: fileUrl,
+        bucket_name: bucketName,
+        etag: uploadResult,
+        upload_date: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    // Rollback transaction on error
+    await client.query('ROLLBACK');
+    console.error('Error generating PDF or saving to database:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate PDF and save to database',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  } finally {
+    // Release database connection
+    client.release();
+  }
+});
+
+
+app.put('/api/request/:requestId/status', async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const requestId = parseInt(req.params.requestId);
+    const { action, admin_id = 1, reason = null } = req.body;
+    
+    // Validate action
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid action. Must be "approve" or "reject"'
+      });
+    }
+    
+    // Set status based on action
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    
+    // Validate rejection reason
+    if (action === 'reject' && (!reason || reason.trim() === '')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Rejection reason is required when rejecting a request'
+      });
+    }
+    
+    // Update Request table
+    const updateRequestQuery = `
+      UPDATE Request 
+      SET Permission_letter_sta = $1, 
+          admin_id = $2
+      WHERE request_id = $3 
+      RETURNING *;
+    `;
+    
+    const requestResult = await client.query(updateRequestQuery, [status, admin_id, requestId]);
+    
+    if (requestResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: 'Request not found'
+      });
+    }
+    
+    // Update Permission_letters table
+    let updatePermissionLetterQuery;
+    let letterQueryParams;
+    
+    if (action === 'approve') {
+      updatePermissionLetterQuery = `
+        UPDATE Permission_letters 
+        SET status = 'approved',
+            approved_by = $2,
+            approved_at = CURRENT_TIMESTAMP
+        WHERE request_id = $1
+        RETURNING *;
+      `;
+      letterQueryParams = [requestId, admin_id];
+    } else {
+      updatePermissionLetterQuery = `
+        UPDATE Permission_letters 
+        SET status = 'rejected',
+            approved_by = $2,
+            approved_at = CURRENT_TIMESTAMP,
+            rejection_reason = $3
+        WHERE request_id = $1
+        RETURNING *;
+      `;
+      letterQueryParams = [requestId, admin_id, reason];
+    }
+    
+    const letterResult = await client.query(updatePermissionLetterQuery, letterQueryParams);
+    
+    await client.query('COMMIT');
+    
+    const actionMessage = action === 'approve' ? 'approved' : 'rejected';
+    
+    res.json({
+      success: true,
+      message: `Request ${actionMessage} successfully`,
+      action: action,
+      data: {
+        request: requestResult.rows[0],
+        permission_letter: letterResult.rows[0] || null,
+        status: status,
+        admin_id: admin_id,
+        ...(action === 'reject' && { rejection_reason: reason })
+      }
+    });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`Error ${req.body.action}ing request:`, error);
+    res.status(500).json({
+      success: false,
+      error: `Failed to ${req.body.action} request`,
+      details: error.message
+    });
+  } finally {
+    client.release();
+  }
+});
+
 const PORT = 3000;
 app.listen(PORT,()=>{
     console.log("Listening" + PORT);
 });
+
+
