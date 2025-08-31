@@ -466,112 +466,83 @@ app.post('/upload_pdf', async (req, res) => {
   }
 });
 
-
-app.put('/api/request/:requestId/status', async (req, res) => {
-  const client = await pool.connect();
-  
+app.get("/letters/:request_id", async (req, res) => {
+  const { request_id } = req.params;
   try {
-    await client.query('BEGIN');
-    
-    const requestId = parseInt(req.params.requestId);
-    const { action, admin_id = 1, reason = null } = req.body;
-    
-    // Validate action
-    if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid action. Must be "approve" or "reject"'
-      });
-    }
-    
-    // Set status based on action
-    const status = action === 'approve' ? 'approved' : 'rejected';
-    
-    // Validate rejection reason
-    if (action === 'reject' && (!reason || reason.trim() === '')) {
-      return res.status(400).json({
-        success: false,
-        error: 'Rejection reason is required when rejecting a request'
-      });
-    }
-    
-    // Update Request table
-    const updateRequestQuery = `
-      UPDATE Request 
-      SET Permission_letter_sta = $1, 
-          admin_id = $2
-      WHERE request_id = $3 
-      RETURNING *;
+    const query = `
+      SELECT url 
+      FROM Permission_letters 
+      WHERE request_id = $1
     `;
-    
-    const requestResult = await client.query(updateRequestQuery, [status, admin_id, requestId]);
-    
-    if (requestResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({
-        success: false,
-        error: 'Request not found'
-      });
+    const result = await pool.query(query, [request_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Letter not found" });
     }
-    
-    // Update Permission_letters table
-    let updatePermissionLetterQuery;
-    let letterQueryParams;
-    
-    if (action === 'approve') {
-      updatePermissionLetterQuery = `
-        UPDATE Permission_letters 
-        SET status = 'approved',
-            approved_by = $2,
-            approved_at = CURRENT_TIMESTAMP
-        WHERE request_id = $1
-        RETURNING *;
-      `;
-      letterQueryParams = [requestId, admin_id];
-    } else {
-      updatePermissionLetterQuery = `
-        UPDATE Permission_letters 
-        SET status = 'rejected',
-            approved_by = $2,
-            approved_at = CURRENT_TIMESTAMP,
-            rejection_reason = $3
-        WHERE request_id = $1
-        RETURNING *;
-      `;
-      letterQueryParams = [requestId, admin_id, reason];
-    }
-    
-    const letterResult = await client.query(updatePermissionLetterQuery, letterQueryParams);
-    
-    await client.query('COMMIT');
-    
-    const actionMessage = action === 'approve' ? 'approved' : 'rejected';
-    
-    res.json({
-      success: true,
-      message: `Request ${actionMessage} successfully`,
-      action: action,
-      data: {
-        request: requestResult.rows[0],
-        permission_letter: letterResult.rows[0] || null,
-        status: status,
-        admin_id: admin_id,
-        ...(action === 'reject' && { rejection_reason: reason })
-      }
-    });
-    
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error(`Error ${req.body.action}ing request:`, error);
-    res.status(500).json({
-      success: false,
-      error: `Failed to ${req.body.action} request`,
-      details: error.message
-    });
-  } finally {
-    client.release();
+
+    return res.json({ url: result.rows[0].url });
+  } catch (err) {
+    console.error("Error fetching letter:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+/**
+ * 2. Accept / Reject Letter → Update Permission_letter_status
+ */
+app.post("/letters/:request_id/status", async (req, res) => {
+  const { request_id } = req.params;
+  const { status } = req.body; // should be "accepted" or "rejected"
+
+  try {
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const query = `
+      UPDATE Request 
+      SET Permission_letter_status = $1 
+      WHERE request_id = $2
+      RETURNING *
+    `;
+    const result = await pool.query(query, [status, request_id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    return res.json({
+      message: `Letter ${status}`,
+      updated: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error updating status:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+/**
+ * 3. List Pending Letters → Fetch requests with status = pending
+ */
+app.get("/letters/pending", async (req, res) => {
+  try {
+    const query = `
+      SELECT r.request_id, s.name AS student_name, e.event_name, p.url 
+      FROM Request r
+      JOIN Student s ON r.Student_id = s.Student_id
+      JOIN Event e ON r.event_id = e.event_id
+      LEFT JOIN Permission_letters p ON r.request_id = p.request_id
+      WHERE r.Permission_letter_status = 'pending'
+    `;
+    const result = await pool.query(query);
+
+    return res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching pending letters:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 const PORT = 3000;
 app.listen(PORT,()=>{
