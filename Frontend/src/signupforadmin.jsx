@@ -15,106 +15,95 @@ function Signupforadmin() {
     const [Code , setCode] = useState('');
 
 
-    const loginwithgoogle = async () => {
-    seterror(null);
-    const provider = new GoogleAuthProvider();
-    try {
 
-      const userCred = await signInWithPopup(auth, provider);
-      const userEmail = userCred.user.email;
-      const uid = userCred.user.uid;
-      
-
-      const isadmin = userEmail.endsWith("@tce.edu");
-      const isstudent = userEmail.endsWith("@student.tce.edu");
-
-      if(!isadmin && !isstudent){
-      seterror("Only student with student id and admin with admin id can register");
-      return;
-    }
-
-      console.log('Google user signed in:', userCred.user);
-      setsuccess(true);
-      try{
-      const checkUser = async () => {
-    const res = await fetch('http://localhost:3000//check-uid', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid }),
+   const checkUser = async (uid, isadmin, isstudent) => {
+  try {
+    const res = await fetch("http://localhost:3000/check-uid", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid, isstudent }), // Only send what backend needs
     });
 
-    const exists = await res.json(); // true or false
+    const data = await res.json();
+    const exists = data.exists; // Handle object response
 
     if (exists && isadmin) {
-      navigate(`/admin/adminprofile/:uid`); // User exists → go here
-    } else if(exists && isstudent){
-      navigate(`/profilefill/student/:uid`);  // User not found → go here
-    }
-  };}
-  catch (err){
-    console.log("PP");
-  }
+      navigate(`/admin/adminprofile/${uid}`); 
+    } else if (exists && isstudent) {
+      navigate(`/student/${uid}`);
+    } else { 
       if (isadmin) {
-      navigate("/admin"); 
-    } if (isstudent ) {
-      navigate("/student"); 
+        navigate("/admin", { state: { uid } });
+      } else if (isstudent) {
+        navigate(`/profilefill`, { state: { uid } });
+      } else {
+        seterror("Invalid user type detected.");
+      }
     }
+  } catch (err) {
+    console.error("Error checking user:", err);
+    seterror("Something went wrong while checking your profile. Try again.");
+  }
+};
 
-    } catch (err) {
-      seterror(err.message);
-      console.error('Google sign-in error:', err);
-    }
-  };
 
-  const handlesubmit = async (e)=>{
-    e.preventDefault();
-    seterror(null);
-    setsuccess(false);
+const loginwithgoogle = async () => {
+  seterror(null);
+  const provider = new GoogleAuthProvider();
 
-    const isadmin = email.endsWith("@tce.edu");
-    const isstudent = email.endsWith("@student.tce.edu");
+  try {
+    const userCred = await signInWithPopup(auth, provider);
+    const userEmail = userCred.user.email;
+    const uid = userCred.user.uid;
 
-    if(!isadmin && !isstudent){
-      seterror("Only student with student id and admin with admin id can register");
+    const isadmin = userEmail.endsWith("@tce.edu");
+    const isstudent = userEmail.endsWith("@student.tce.edu");
+
+    if (!isadmin && !isstudent) {
+      seterror("Only students and admins with TCE emails can register.");
       return;
     }
-    
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
-      console.log('User signed up:', userCredential.user);
-      setsuccess(true);
-       try{
-      const checkUser = async () => {
-    const res = await fetch('http://localhost:3000//check-uid', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid }),
-    });
 
-    const exists = await res.json(); // true or false
+    console.log("✅ Google user signed in:", userCred.user);
+    setsuccess(true);
 
-    if (exists && isadmin) {
-      navigate(`/admin/adminprofile/:uid`); // User exists → go here
-    } else if(exists && isstudent){
-      navigate(`/profilefill/student/:uid`);  // User not found → go here
-    }
-  };}
-  catch (err){
-    console.log("PP");
+    await checkUser(uid, isadmin, isstudent);
+
+  } catch (err) {
+    console.error("Google sign-in error:", err);
+    seterror(err.message);
   }
-      if(isadmin){
-        navigate('/admin',{ state: { uid } });
-      }
-      else{
-        navigate('/profilefill',{ state: { uid } });
-      }
-      
-    } catch (err) {
-      seterror(err.message);
-      console.error('Signin error', err);
-    }
-  };
+};
+
+
+  const handlesubmit = async (e) => {
+  e.preventDefault();
+  seterror(null);
+  setsuccess(false);
+
+  const isadmin = email.endsWith("@tce.edu");
+  const isstudent = email.endsWith("@student.tce.edu");
+
+  if (!isadmin && !isstudent) {
+    seterror("Only students and admins with TCE emails can register.");
+    return;
+  }
+
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
+
+    console.log("✅ User signed in:", userCredential.user);
+    setsuccess(true);
+
+    // 🔥 Call backend to check if profile is filled
+    await  checkUser(uid, isadmin, isstudent);
+
+  } catch (err) {
+    console.error("❌ Sign-in error:", err);
+    seterror(err.message);
+  }
+};
 
  
   const Gottoback = ()=>{

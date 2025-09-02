@@ -7,6 +7,8 @@ import Studentprofile from "./studentprofile";
 import Adminprofilefill from "./adminprofilefill";
 import Adminpage from "./adminpage";
 import Createevent from "./createevent";
+import StudentSearch from "./search";
+import AdminLetterApproval from "./letterapproval";
 
 
 const App = ()=> {
@@ -17,10 +19,12 @@ const App = ()=> {
                 <Route path="/" element={<Signup/>}/>
                 <Route path="/profilefill" element={<Profilefill/>}/>
                 <Route path="/login" element={<Signupforadmin/>}/>
-                <Route path="/profilefill/student/:uid" element={<Studentprofile/>}/>
+                <Route path="/student/:uid" element={<Studentprofile/>}/>
                 <Route path="/admin" element={<Adminprofilefill/>}/>
                 <Route path="/admin/adminprofile/:uid" element={<Adminpage/>}/>
                 <Route path="/createevent" element={<Createevent/>}/>
+                <Route path="/search" element={<StudentSearch/>}/>
+                <Route path="/permission" element={<AdminLetterApproval/>}/>
             </Routes>
         </div>
         </>

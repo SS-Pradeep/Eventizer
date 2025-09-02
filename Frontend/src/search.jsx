@@ -1,98 +1,112 @@
-import React, { useState, useEffect } from "react";
-import "./Search.css";
+import React, { useState } from "react";
 
-const Search = () => {
+function StudentSearch() {
   const [name, setName] = useState("");
   const [roll, setRoll] = useState("");
   const [year, setYear] = useState("");
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch all students initially
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+  // 🔍 Search students
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const fetchStudents = async (filters = {}) => {
     try {
-      let query = new URLSearchParams(filters).toString();
-      const res = await fetch(`http://localhost:5000/students?${query}`);
-      const data = await res.json();
-      setStudents(data);
-    } catch (error) {
-      console.error("Error fetching students:", error);
+      const response = await fetch("http://localhost:3000/searchstudent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, roll, year }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      setStudents(result);
+    } catch (err) {
+      console.error("Error searching students:", err);
+      alert(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    fetchStudents({ name, roll, year });
-  };
-
-  const handleSelectStudent = (student) => {
-    setSelectedStudent(student);
-  };
-
-  const handleCloseProfile = () => {
-    setSelectedStudent(null);
+  // 👤 Get full student details
+  const getStudentDetails = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:3000/students/${id}`);
+      const result = await response.json();
+      setSelectedStudent(result);
+    } catch (err) {
+      console.error("Error fetching student:", err);
+      alert("Failed to fetch student details");
+    }
   };
 
   return (
-    <div className="mainsearch" onClick={handleCloseProfile}>
-      <div className="topsearch" onClick={(e) => e.stopPropagation()}>
+    <div>
+      <h2>Student Search</h2>
+
+      <form onSubmit={handleSearch}>
         <input
           type="text"
-          placeholder="Search by Name"
+          placeholder="Enter Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
           type="text"
-          placeholder="Search by Roll Number"
+          placeholder="Enter Roll Number"
           value={roll}
           onChange={(e) => setRoll(e.target.value)}
         />
         <input
           type="text"
-          placeholder="Search by Year"
+          placeholder="Enter Year"
           value={year}
           onChange={(e) => setYear(e.target.value)}
         />
-        <button onClick={handleSearch}>Search</button>
-      </div>
+        <button type="submit" disabled={loading}>
+          {loading ? "Searching..." : "Search"}
+        </button>
+      </form>
 
-      <div className="bottomsearch" onClick={(e) => e.stopPropagation()}>
-        {!selectedStudent ? (
-          <div className="student-list">
-            {students.length > 0 ? (
-              students.map((s) => (
-                <div
-                  key={s.uid}
-                  className="student-card"
-                  onClick={() => handleSelectStudent(s)}
-                >
-                  <p>
-                    <strong>{s.name}</strong> ({s.rollNumber})
-                  </p>
-                  <p>Year: {s.graduationYear}</p>
-                </div>
-              ))
-            ) : (
-              <p>No students found</p>
-            )}
-          </div>
-        ) : (
-          <div className="student-profile">
-            <h3>{selectedStudent.name}</h3>
-            <p>Roll: {selectedStudent.rollNumber}</p>
-            <p>Year: {selectedStudent.graduationYear}</p>
-            <p>Email: {selectedStudent.email}</p>
-            <p>Department: {selectedStudent.department}</p>
-            <button onClick={handleCloseProfile}>Close</button>
-          </div>
-        )}
-      </div>
+      <h3>Results</h3>
+      <ul>
+        {students.map((student) => (
+          <li
+            key={student.id}
+            onClick={() => getStudentDetails(student.id)}
+            style={{ cursor: "pointer", marginBottom: "8px" }}
+          >
+            {student.name} ({student.roll}) - Year: {student.year}
+          </li>
+        ))}
+      </ul>
+
+      {selectedStudent && (
+        <div
+          style={{
+            border: "1px solid gray",
+            padding: "10px",
+            marginTop: "15px",
+            borderRadius: "8px",
+          }}
+        >
+          <h3>Student Details</h3>
+          <p><b>Name:</b> {selectedStudent.name}</p>
+          <p><b>Roll:</b> {selectedStudent.roll}</p>
+          <p><b>Year:</b> {selectedStudent.year}</p>
+          <p><b>Email:</b> {selectedStudent.email}</p>
+          <p><b>Department:</b> {selectedStudent.department}</p>
+          <p><b>DOB:</b> {selectedStudent.dob}</p>
+        </div>
+      )}
     </div>
   );
-};
+}
 
-export default Search;
+export default StudentSearch;
