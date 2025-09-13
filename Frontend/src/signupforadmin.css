@@ -1,29 +1,30 @@
-/* Body styling */
+/* Global styling */
 body {
   margin: 0;
   padding: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  
+  color: #333;
 }
 
+/* Container */
 .signupadmin {
   display: flex;
   justify-content: center;
-  background-color: #ef6563;
   align-items: center;
   min-height: 100vh;
   flex-direction: column;
   position: relative;
 }
 
-/* Main white card */
+/* Main card */
 .Signupbaseadmin {
-  background-color: white;
+  background-color: #ffffff;
   padding: 40px 30px;
-  border-radius: 12px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  width: 350px;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  width: 360px;
   text-align: center;
+  animation: fadeIn 0.8s ease;
 }
 
 /* Heading */
@@ -31,7 +32,8 @@ body {
   margin-bottom: 25px;
   font-size: 28px;
   font-weight: bold;
-  color: #333;
+  color: #004080;
+  letter-spacing: 1px;
 }
 
 /* Labels */
@@ -40,37 +42,46 @@ body {
   text-align: left;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #333;
+  color: #444;
 }
 
 /* Inputs */
 .signupformadmin input {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   margin-bottom: 20px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: border 0.3s;
+}
+
+.signupformadmin input:focus {
+  outline: none;
+  border: 1px solid #004080;
+  box-shadow: 0 0 6px rgba(75, 44, 130, 0.3);
 }
 
 /* Submit button */
 .buttonforsignupadmin {
   width: 100%;
   padding: 12px;
-  background-color: #ef5653;
-  color: white;
+  background-color: #004080;
+  color: wheat;
   font-size: 16px;
   font-weight: bold;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-
+  transition: background 0.3s ease, transform 0.2s;
 }
 
 .buttonforsignupadmin:hover {
-  background-color: #ef6563;
+  background-color: #004080;
+  transform: scale(1.03);
 }
 
+/* Google button */
 .Signupwithgoogleadmin {
   margin-top: 20px;
 }
@@ -79,17 +90,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   width: 300px;
-  padding: 10px;
-  background-color: white;
-  color: #ef6563;
+  padding: 12px;
+  background: #fff;
+  color: #444;
   font-size: 16px;
   font-weight: bold;
-  border: none;
+  border: 1px solid #ddd;
   border-radius: 10px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
   position: relative;
 }
 
@@ -101,32 +112,44 @@ body {
 }
 
 .googlesignupbuttonadmin:hover {
-  background-color: #ffffff;
+  background: #b8adad;
+  border-color: #ccc;
+  transform: translateY(-1px);
 }
 
-
+/* Back button */
 .back {
-  width: 150px;
+  position: relative;
+  width: 100%;
+  max-width: 180px;
+  top: 20px;
   padding: 10px;
   font-size: 15px;
   font-weight: bold;
   border-radius: 8px;
-  border: none;
+  border: 2px solid #004080;
   cursor: pointer;
-  background-color: white;
-  color: #ef6563;
-  border: 2px solid #ef6563;
-  position: absolute;
-  margin: 20;
-  left: 20px;
+  background: white;
+  color: #004080;
   transition: all 0.3s ease;
 }
 
-
 .back:hover {
-  background-color: #e83a37;
+  background: #004080;
   color: white;
+  transform: translateY(-2px);
 }
 
 
 
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

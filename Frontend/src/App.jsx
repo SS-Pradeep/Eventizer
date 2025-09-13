@@ -9,6 +9,8 @@ import Adminpage from "./adminpage";
 import Createevent from "./createevent";
 import StudentSearch from "./search";
 import AdminLetterApproval from "./letterapproval";
+import Studentletters from "./studentletters";
+import Achievements from "./studentAchievement";
 
 
 const App = ()=> {
@@ -25,6 +27,8 @@ const App = ()=> {
                 <Route path="/createevent" element={<Createevent/>}/>
                 <Route path="/search" element={<StudentSearch/>}/>
                 <Route path="/permission" element={<AdminLetterApproval/>}/>
+                <Route path="/letter" element={<Studentletters/>}/>
+                <Route path="/achievements" element={<Achievements/>}/>
             </Routes>
         </div>
         </>

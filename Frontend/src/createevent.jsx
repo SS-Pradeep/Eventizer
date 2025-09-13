@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import auth  from "./config/firebase-config";
+import './createevent.css';
 const Createevent = () => {
   const [event_name, SetName] = useState("");
   const [eventype, SetType] = useState("");
@@ -16,13 +17,15 @@ const Createevent = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  const user = auth.currentUser;
+  const uid = user.uid;
+
   const navigate = useNavigate();
 
   const handlesubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const user = auth.currentUser;
-    const uid = user.uid;
+    
 
     if (
       (event_level !== "Intra college" && event_level !== "Inter college") ||
@@ -185,10 +188,9 @@ const Createevent = () => {
               <option value="">Select Level</option>
               <option value="Intra college">Intra college</option>
               <option value="Inter college">Inter college</option>
-              <option value="Hackathon">Hackathon</option>
               <option value="local">Local</option>
-              <option value="national">National</option>
-              <option value="international">International</option>
+              <option value="National">National</option>
+              <option value="International">International</option>
             </select>
           </label>
           <br />

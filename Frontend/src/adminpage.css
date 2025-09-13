@@ -1,58 +1,95 @@
 .main {
-    display: flex;
-    height: 100vh;
-    width: 100vw;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 /* Left sidebar */
 #adminleft {
-    background-color: #ef6563;
-    width: 25%;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px; /* space between items */
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  background: linear-gradient(180deg, #ef6563, #d94c4a);
+  width: 20%;
+  min-width: 240px;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.15);
 }
 
 /* Profile image */
 #adminleft img {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid white;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid white;
+  transition: transform 0.3s ease;
+}
+
+#adminleft img:hover {
+  transform: scale(1.05);
 }
 
 /* Sidebar buttons */
 #adminleft button {
-    width: 100%;
-    padding: 12px;
-    background-color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
+  width: 100%;
+  padding: 14px;
+  background-color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 #adminleft button:hover {
-    background-color: #f04f4c;
-    color: white;
+  background-color: #f04f4c;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 /* Right content */
 #adminright {
-    background-color: white;
-    flex: 1; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: black;
-    padding: 20px;
+  flex: 1; 
+  background-color: #f9f9f9;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+/* Notifications */
+.notification-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease;
+}
+
+.notification-item:hover {
+  transform: scale(1.02);
+}
+
+.notification-item h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #ef6563;
+}
+
+.notification-item p {
+  margin: 0 0 10px;
+  color: #555;
+}
+
+.notification-item small {
+  color: #888;
+  font-size: 13px;
 }

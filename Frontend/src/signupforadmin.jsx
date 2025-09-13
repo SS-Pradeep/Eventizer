@@ -131,7 +131,7 @@ const loginwithgoogle = async () => {
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       </div>
       <div className='Signupwithgoogleadmin'>
-        <button className='googlesignupbuttonadmin'onClick={loginwithgoogle} ><img src={download} height='30' width='30'/>Signup with Google</button>
+        <button className='googlesignupbuttonadmin'onClick={loginwithgoogle} ><img src={download} height='30' width='30'/>Login with Google</button>
       </div>
 
       <div className='backs'>

@@ -55,7 +55,7 @@ const Profilefill = ()=>{
             }
 
             setsuccess(true);
-            navigate(`student/${uid}`);
+            navigate(`/student/${uid}`);
         } catch (err) {
             seterror(err.message);
             console.error(err);

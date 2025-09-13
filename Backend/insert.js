@@ -3,12 +3,24 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 const Minio = require('minio');
 const cors = require('cors');
+const multer = require('multer');
 require('dotenv').config();
 const app = express();
+const upload = multer();
 app.use(express.json());
 app.use(cors({
   origin: '*'
 }));
+
+  
+const minioClient = new Minio.Client({
+    endPoint: process.env.MINIO_ENDPOINT || 'play.min.io',
+    port: parseInt(process.env.MINIO_PORT) || 9000,
+    useSSL: process.env.MINIO_USE_SSL === 'true' || true,
+    accessKey: process.env.MINIO_ACCESS_KEY || 'Q3AM3UQ867SPQQA43P2F',
+    secretKey: process.env.MINIO_SECRET_KEY || 'zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG'
+  });
+
 
 const pool = new Pool({
     host : '127.0.0.1',
@@ -216,10 +228,10 @@ app.get('/searchstudent', async (req, res) => {
       return res.status(404).send("Search result not found");
     }
 
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Search failed");
+    return res.status(500).send("Search failed");
   }
 });
 
@@ -376,18 +388,7 @@ app.post('/upload-pdf', async (req, res) => {
   }
 });*/
 app.post('/upload-pdf', async (req, res) => {
-  const Minio = require('minio');
-  const puppeteer = require('puppeteer');
   
-  // Initialize MinIO client with environment variables
-  const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT || 'play.min.io',
-    port: parseInt(process.env.MINIO_PORT) || 9000,
-    useSSL: process.env.MINIO_USE_SSL === 'true' || true,
-    accessKey: process.env.MINIO_ACCESS_KEY || 'Q3AM3UQ867SPQQA43P2F',
-    secretKey: process.env.MINIO_SECRET_KEY || 'zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG'
-  });
-
   const client = await pool.connect();
   let browser;
 
@@ -882,7 +883,6 @@ app.post("/check-uid", async (req, res) => {
 
 app.get("/request",async (req,res)=>{
   try{
-    console.log(req);
     const {status } = req.query;
     if (!status) {
       return res.status(400).json({ 
@@ -901,13 +901,21 @@ app.get("/request",async (req,res)=>{
     }
 
     const query = `
-      SELECT 
-      request_id
-      FROM request 
-      WHERE permission_letter_status = $1 
-      ORDER BY request_id DESC
+    SELECT 
+    r.request_id,
+    s.student_id,
+       s.name,
+       e.event_name,
+       e.event_type,
+       s.roll_number,
+       r.permission_letter_status
+FROM request r
+INNER JOIN student s ON r.student_id = s.student_id
+INNER JOIN event e ON e.event_id = r.event_id
+WHERE r.permission_letter_status = $1; 
+
     `;
-    
+
     const result = await pool.query(query, [status.toLowerCase()]);
 
     return res.status(200).json(result.rows);
@@ -921,6 +929,28 @@ app.get("/request",async (req,res)=>{
   })}
 });
 
+app.get("/admin/notifications" , async (req , res)=>{
+  try{
+    const query = `
+    SELECT 
+    s.name, s.roll_number , r.permission_letter_status
+    from request r
+    INNER JOIN student s ON r.student_id = s.student_id
+    WHERE r.permission_letter_status = "pending";
+    `;
+
+    const result = await pool.query(query);
+    return res.status(200).json(result.rows);
+
+  }
+  catch{
+    console.error('Error fetching requests:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch requests'
+  });
+  }
+});
 // ✅ Add this endpoint if it's missing
 app.put("/request/:id/status", async (req, res) => {
   try {
@@ -960,6 +990,303 @@ app.put("/request/:id/status", async (req, res) => {
   }
 });
 
+
+app.get("/requeststudent/:uid", async (req,res)=>{
+   try{
+
+    const {status } = req.query;
+    const {uid} = req.params;
+    if (!status) {
+      return res.status(400).json({ 
+        error: 'Status query parameter is required',
+        message: 'Please provide status as: pending, accepted, or rejected'
+      });
+    }
+
+    // Validate status values
+    const validStatuses = ['pending', 'accepted', 'rejected'];
+    if (!validStatuses.includes(status.toLowerCase())) {
+      return res.status(400).json({ 
+        error: 'Invalid status value',
+        message: 'Status must be one of: pending, accepted, rejected'
+      });
+    }
+
+    const query = `
+    SELECT 
+    e.event_id,
+    e.event_name,
+    e.end_date,
+    e.organiser,
+    r.permission_letter_status
+FROM student s
+INNER JOIN request r ON s.student_id = r.student_id
+INNER JOIN event e ON r.event_id = e.event_id
+WHERE s.firebase_uid = $1
+  AND r.permission_letter_status = $2;
+
+    `;
+
+    const result = await pool.query(query, [uid,status.toLowerCase()]);
+
+    return res.status(200).json(result.rows);
+   }
+   catch(err){
+    console.log("Unable to fetch:" , err);
+    return res.status(500).json("Unable to fetch");
+   }
+    
+});
+
+app.get("/certificateshow/:uid/:filter", async (req,res)=>{
+  try{
+    const {uid , filter} = req.params;
+    query = `
+    SELECT 
+    
+    e.event_id,
+    e.event_name,
+    e.event_type,
+    e.end_date
+FROM student s
+INNER JOIN request r 
+    ON s.student_id = r.student_id
+INNER JOIN event e 
+    ON r.event_id = e.event_id
+WHERE s.firebase_uid = $1
+  AND r.permission_letter_status = 'accepted'
+  AND e.certificate_upload = $2;
+
+    `;
+
+    const result = await pool.query(query, [uid,filter]);
+    console.log(result.rows);
+    return res.status(200).json(result.rows);
+  }
+  catch(err){
+    console.log("ERROR");
+    return res.status(500).json({ error: "Database error" });
+  }
+
+
+
+  });
+
+  app.post("/upload-certificate/:expandedId", upload.single("certificate"),async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const BUCKET = "certificate";
+    const event_id = req.params.expandedId;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const pdfBuffer = req.file.buffer;
+
+    const exists = await minioClient.bucketExists(BUCKET);
+    if (!exists) {
+      await minioClient.makeBucket(BUCKET, "us-east-1");
+    }
+
+    const objectName = `certificate-${Date.now()}.pdf`;
+
+    await minioClient.putObject(BUCKET, objectName, pdfBuffer, pdfBuffer.length, {
+      "Content-Type": "application/pdf",
+    });
+
+    const url = await minioClient.presignedGetObject(BUCKET, objectName, 24 * 60 * 60);
+
+    await client.query("BEGIN");
+
+    await client.query(
+      `UPDATE event SET certificate_upload = true WHERE event_id = $1`,
+      [event_id]
+    );
+
+    await client.query(
+      `INSERT INTO certificates (request_id, file_key, url)
+SELECT request_id, $2, $3
+FROM request
+WHERE event_id = $1;
+`,
+      [event_id, objectName, url]
+    );
+
+    await client.query("COMMIT");
+    console.log("ALL ok");
+    return res.json({
+      message: "✅ Certificate uploaded & recorded",
+      file_key: objectName,
+      url,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Upload error:", err);
+    return res.status(500).json({ error: "Server error during upload" });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/superadmin/notifications",async (req,res)=>{
+  try{
+  query = `
+  SELECT s.name,c.class,e.event_type,e.organizer
+  from request r
+  inner join student s on r.student_id = s.student_id
+  inner join event e on e.event_id = r.event_id
+  inner join class c on c.class_id = r.class_id
+  where r.current_stage = "superadmin"; 
+  `;
+  const result = await pool.query(query);
+  return res.status(200).json(result.rows);
+}
+  catch{
+    console.error('Error fetching requests:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch requests'
+  });
+  }
+});
+
+app.get("/superrequest",async (req,res)=>{
+  try{
+     
+    const {status } = req.query;
+    if (!status) {
+      return res.status(400).json({ 
+        error: 'Status query parameter is required',
+        message: 'Please provide status as: pending, accepted, or rejected'
+      });
+    }
+
+    // Validate status values
+    const validStatuses = ['pending', 'accepted', 'rejected'];
+    if (!validStatuses.includes(status.toLowerCase())) {
+      return res.status(400).json({ 
+        error: 'Invalid status value',
+        message: 'Status must be one of: pending, accepted, rejected'
+      });
+    }
+
+    const query = `
+    SELECT 
+       s.name,
+       s.roll_number,
+       e.event_name,
+       e.event_type
+       FROM request r
+       INNER JOIN student s ON r.student_id = s.student_id
+       INNER JOIN event e ON e.event_id = r.event_id
+       WHERE r.permission_letter_status = $1 and r.curr_stage = "superadmin"
+       ORDER BY e.evnt_name,s.name; 
+
+    `;
+
+    const result = await pool.query(query, [status.toLowerCase()]);
+
+    return res.status(200).json(result.rows);
+
+  }
+  catch (error) {
+    console.error('Error fetching requests:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch requests'
+  })}
+});
+
+app.put("/superrequests/update",async (req,res)=>{
+  let { requestIds, status } = req.body;
+  
+  try {
+    // Input validation
+    const validStatuses = ['pending', 'accepted', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    // Convert single ID to array for uniform processing
+    if (!Array.isArray(requestIds)) {
+      requestIds = [requestIds];
+    }
+    
+    if (requestIds.length === 0) {
+      return res.status(400).json({ error: 'No request IDs provided' });
+    }
+
+    // Validate all IDs are numbers
+    const numericIds = requestIds.map(id => {
+      const numId = parseInt(id);
+      if (isNaN(numId)) {
+        throw new Error(`Invalid request ID: ${id}`);
+      }
+      return numId;
+    });
+
+    
+    try {
+      await pool.query('BEGIN');
+      
+      // Optimized bulk update using PostgreSQL ANY() operator
+      const updateQuery = `
+        UPDATE request 
+        SET 
+          permission_letter_status = $1,
+          curr_stage = CASE 
+            WHEN $1 IN ('accepted', 'rejected') THEN 'completed'
+            ELSE curr_stage
+          END,
+          updated_at = NOW()
+        WHERE request_id = ANY($2::int[]) 
+          AND curr_stage = 'superadmin'
+          AND permission_letter_status = 'pending'
+        RETURNING request_id, permission_letter_status, curr_stage, updated_at
+      `;
+      
+      const result = await pool.query(updateQuery, [status, numericIds]);
+      await pool.query('COMMIT');
+      
+      const updated = result.rows;
+      const updatedIds = updated.map(row => row.request_id);
+      const failedIds = numericIds.filter(id => !updatedIds.includes(id));
+      
+      console.log(`Bulk update completed: ${updated.length}/${numericIds.length} records updated to ${status}`);
+      
+      return res.json({
+        success: true,
+        updated: updatedIds,
+        failed: failedIds,
+        total_requested: numericIds.length,
+        total_updated: updated.length,
+        message: `${updated.length} request(s) ${status} successfully`,
+        details: updated,
+        operation_type: numericIds.length === 1 ? 'single' : 'bulk',
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      return res.status(500).json({ 
+      error: 'Update failed', 
+      details: error.message,
+      failed_ids: requestIds || []
+    });
+    } finally {
+      client.release();
+    }
+
+  } catch (error) {
+    console.error('Update operation failed:', error);
+    return res.status(500).json({ 
+      error: 'Update failed', 
+      details: error.message,
+      failed_ids: requestIds || []
+    });
+  }
+});
 
 const PORT = 3000;
 app.listen(PORT,()=>{

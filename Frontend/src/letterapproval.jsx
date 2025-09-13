@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import './letterapp.css';
 //import { Document, Page, pdfjs } from "react-pdf";
 
 // PDF worker
@@ -12,61 +13,67 @@ export default function AdminLetterApproval() {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
 
-  // ✅ Updated fetch URL to match backend endpoint
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(
-          `http://localhost:3000/request?status=${filter}` // Changed from /requests to /request
-        );
+  // Updated fetch URL to match backend endpoint
+useEffect(() => {
+  const fetchRequests = async () => {
+    try {
+      setLoading(true);
 
-        
-        
+      const res = await fetch(`http://localhost:3000/request?status=${filter}`);
 
-        if (!res.ok) {
+      if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-      
+
       const data = await res.json();
-      console.log('Received data:', data);
-        setRequests(data);
-      } catch (e) {
-        console.error("Error fetching requests:", e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [filter]);
-
-  // ✅ Updated status change URL to match backend endpoint
-  const handleStatusChange = async (requestId, newStatus) => {
-    try {
-      await fetch(`http://localhost:3000/request/${requestId}/status`, { 
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.request_id === requestId
-            ? { ...r, permission_letter_status: newStatus }
-            : r
-        )
-      );
-
-      if (expandedId === requestId) {
-        setExpandedId((prev) =>
-          prev
-            ? { ...prev, permission_letter_status: newStatus }
-            : prev
-        );
-      }
+      console.log("Fetched requests:", data); // ✅ log parsed data, not res
+      setRequests(data);
     } catch (e) {
-      console.error("Error updating request:", e);
+      console.error("Error fetching requests:", e);
+    } finally {
+      setLoading(false);
     }
   };
+
+  fetchRequests(); // 👈 call the function
+}, [filter]);
+
+
+  // ✅ Updated status change URL to match backend endpoint
+ const handleStatusChange = async (requestId, newStatus) => {
+  try {
+    const res = await fetch(`http://localhost:3000/request/${requestId}/status`, { 
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to update status");
+    }
+
+    const updated = await res.json(); // 👈 if backend returns updated request
+    console.log(updated);
+
+    // update requests list
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.request_id === requestId
+          ? { ...r, permission_letter_status: updated.permission_letter_status || newStatus }
+          : r
+      )
+    );
+
+    // keep expanded card as is
+    if (expandedId === requestId) {
+      setExpandedId(requestId);
+    }
+
+  } catch (e) {
+    console.error("Error updating request:", e);
+  }
+};
+
 
   const onPdfLoad = ({ numPages }) => {
     setNumPages(numPages);
@@ -123,7 +130,10 @@ export default function AdminLetterApproval() {
                   </span>
                 </div>
                 <p className="letter-desc">
-                  {req.event_name} ({req.event_level})
+                  Name:{req.name} <br></br>
+                  Roll_number:    {req.roll_number}<br></br>
+                  Event_name :    {req.event_name} <br></br>
+                  Event_Type :    {req.event_type}
                 </p>
 
                 {filter === "pending" && (
@@ -157,7 +167,7 @@ export default function AdminLetterApproval() {
                   <div className="preview-header">
                     <h3 className="preview-title">{req.student_name}</h3>
                     <p className="preview-meta">
-                      Event: <b>{req.event_name}</b> ({req.event_level})
+                      Event: <b>{req.event_name}</b> ({req.event_type})
                     </p>
                     <p>
                       Status:{" "}

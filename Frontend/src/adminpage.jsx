@@ -7,21 +7,23 @@ const Adminpage = () => {
     const [notifications, setNotifications] = useState([]);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        fetch("http://localhost:3000/admin/notifications")
-            .then((res) => {
-                if (!res.ok) throw new Error("Failed to fetch notifications");
-                return res.json();
-            })
-            .then((data) => {
-                console.log("Notifications:", data);
-                setNotifications(data);
-            })
-            .catch((err) => {
-                console.error(err);
-                setError(err.message);
-            });
-    }, []);
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/admin/notifications"); 
+        if (!response.ok) {
+          throw new Error("Failed to fetch notifications");
+        }
+        const data = await response.json();
+        console.log(data);
+        setNotifications(data);   
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchNotifications();
+  }, []); 
 
     return (
         <>
@@ -39,9 +41,8 @@ const Adminpage = () => {
                 {notifications.length > 0 ? (
                     notifications.map((n, i) => (
                         <div key={i} className="notification-item">
-                            <h4>{n.title}</h4>
-                            <p>{n.message}</p>
-                            <small>{new Date(n.created_at).toLocaleString()}</small>
+                            <h4>{n.student_name}</h4> <p>{n.current_year}</p>
+                            
                         </div>
                     ))
                 ) : (

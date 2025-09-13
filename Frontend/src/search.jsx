@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import './search.css';
 
 function StudentSearch() {
   const [name, setName] = useState("");
@@ -12,12 +13,17 @@ function StudentSearch() {
   const handleSearch = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const data  = {
+      name:name,
+      roll:roll,
+      year : year
+    }
 
     try {
       const response = await fetch("http://localhost:3000/searchstudent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, roll, year }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -47,7 +53,7 @@ function StudentSearch() {
   };
 
   return (
-    <div>
+    <div className="app-container">
       <h2>Student Search</h2>
 
       <form onSubmit={handleSearch}>
@@ -101,8 +107,6 @@ function StudentSearch() {
           <p><b>Roll:</b> {selectedStudent.roll}</p>
           <p><b>Year:</b> {selectedStudent.year}</p>
           <p><b>Email:</b> {selectedStudent.email}</p>
-          <p><b>Department:</b> {selectedStudent.department}</p>
-          <p><b>DOB:</b> {selectedStudent.dob}</p>
         </div>
       )}
     </div>

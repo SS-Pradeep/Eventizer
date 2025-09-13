@@ -9,13 +9,13 @@
 /* Left sidebar */
 #left {
     background-color: #6f9cc1;
-    width: 25%;
-    padding: 20px;
+    width: 260px; 
+    padding: 30px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px; /* space between items */
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    gap: 25px;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
 }
 
 /* Profile image */
@@ -25,35 +25,68 @@
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid white;
+    margin-bottom: 15px;
 }
 
 /* Sidebar buttons */
 #left button {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background-color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 16px;
     font-weight: bold;
     color: #333;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 #left button:hover {
     background-color: #4f89b5;
     color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 /* Right content */
 #right {
     background-color: white;
-    flex: 1; 
+    flex: 1;
     display: flex;
+    flex-direction: column; 
     align-items: center;
     justify-content: center;
     color: black;
     padding: 20px;
+    position: relative;
+}
+
+/* Floating create event button */
+#createevent {
+    background-color: #6f9cc1;
+    border: none;
+    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+#createevent:hover {
+    background-color: #4f89b5;
+    transform: scale(1.1);
+}
+
+/* Instruction text */
+#right p {
+    margin-top: 20px;
+    font-size: 18px;
+    font-weight: 500;
+    color: #444;
 }
