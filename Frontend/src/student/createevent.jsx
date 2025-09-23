@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import auth  from "./config/firebase-config";
+import auth  from "../config/firebase-config";
 import './createevent.css';
 const Createevent = () => {
   const [event_name, SetName] = useState("");

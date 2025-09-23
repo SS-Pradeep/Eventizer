@@ -185,26 +185,31 @@ app.post('/leaderboardregister', async (req,res)=>{
 });
 
 //while sreaching for student -- admin
-/*
-app.get('/searchstudent/:id',(req,res)=>{
+app.get('/searchstudent/:id', async(req, res) => {
     const {id} = req.params;
-
-    try{
-        const result = await.Client.query(
-            "SELECT * FROM STUDENT WHERE roll_number = $1",[id]
+    try {
+        const result = await Client.query(
+          `
+          SELECT e.event_name, COUNT(*) as event_count
+          FROM request r
+          JOIN events e ON r.event_id = e.event_id  
+          WHERE r.student_id = $1
+          GROUP BY e.event_name
+          ORDER BY event_count DESC;`,
+          [id]  
         )
-
         if (result.rows.length === 0) {
             return res.status(404).send("Search result not found");
         }
         
-        res.json(result.rows[0]);
+        res.json(result.rows);
     }
-    catch(err){
+    catch(err) {
         console.error(err);
-        res.status(500).send("Insert failed");
+        res.status(500).send("Query failed"); // More accurate error message
     }
-});*/
+});
+
 
 //student-search ny name
 app.get('/searchstudent', async (req, res) => {
@@ -213,12 +218,12 @@ app.get('/searchstudent', async (req, res) => {
   try {
     if(name!=""){
     const result = await Client.query(
-      "SELECT * FROM student WHERE LOWER(name) = LOWER($1)",
+      "SELECT id,name,roll_number,year FROM student WHERE LOWER(name) = LOWER($1)",
       [name]
     );}
     if(roll!=""){
       const result = await Client.query(
-      "SELECT * FROM student WHERE roll_number = $1",
+      "SELECT id,name,roll_number,year FROM student WHERE roll_number = $1",
       [roll]
     );
     }
@@ -1287,6 +1292,24 @@ app.put("/superrequests/update",async (req,res)=>{
     });
   }
 });
+
+app.get("/superadmin/getnames" , async(req,res)=>{
+  try{
+    query = `
+    SELECT name from 
+    admin WHERE role = "admin"
+    `;
+    const result = await pool.query(query);
+
+    return res.status(200).json(result.rows);
+  }
+  catch(err){
+    return res.status(500).json({
+      message : `no teachers found`
+    });
+  }
+});
+
 
 const PORT = 3000;
 app.listen(PORT,()=>{

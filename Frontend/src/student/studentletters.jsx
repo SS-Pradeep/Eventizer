@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import auth from "./config/firebase-config";
+import { useEffect, useState } from "react";
+import auth from "../config/firebase-config";
 
-const Achievements = () => {
-  const uid = auth.currentUser?.uid;
-  const [filter, setFilter] = useState(false);
+const Studentletters = () => {
+  const uid = auth.currentUser?.uid;    
+  const [filter, setFilter] = useState("pending");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
@@ -14,7 +14,7 @@ const Achievements = () => {
       try {
         setLoading(true);
         const res = await fetch(
-          `http://localhost:3000/certificateshow/${uid}/${filter}`
+          `http://localhost:3000/requeststudent/${uid}?status=${filter}`
         );
 
         if (!res.ok) {
@@ -34,50 +34,18 @@ const Achievements = () => {
     if (uid) fetchRequests();
   }, [uid, filter]);
 
-  // ✅ Fixed handleSubmit
-  const handleSubmit = async (e, eventId) => {
-    e.preventDefault(); // prevent refresh
-
-    const fileInput = e.target.elements.file;
-    if (!fileInput.files.length) {
-      alert("Please select a file first.");
-      return;
-    }
-
-    const file = fileInput.files[0];
-    const formData = new FormData();
-    formData.append("certificate", file);
-    formData.append("event_id", eventId);
-
-    try {
-      const res = await fetch(`http://localhost:3000/upload-certificate/${expandedId}`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      console.log("Upload success:", data);
-    } catch (err) {
-      console.error("Upload error:", err);
-    }
-  };
-
   return (
     <div className="mainapproval">
       <div className="panelapprovaltop">
-        <h2>Certificates</h2>
+        <h2>My Permission Letters</h2>
         <select
           className="select"
           value={filter}
-          onChange={(e) => setFilter(e.target.value === "true")}
+          onChange={(e) => setFilter(e.target.value)}
         >
-          <option value="false">Certificate not uploaded</option>
-          <option value="true">Certificate uploaded</option>
+          <option value="pending">Pending</option>
+          <option value="accepted">Accepted</option>
+          <option value="rejected">Rejected</option>
         </select>
       </div>
 
@@ -85,7 +53,7 @@ const Achievements = () => {
         {loading ? (
           <div className="empty">Loading requests…</div>
         ) : requests.length === 0 ? (
-          <div className="empty">No requests found.</div>
+          <div className="empty">No {filter} requests found.</div>
         ) : (
           requests.map((req) => (
             <div key={req.event_id} className="letter-card-wrapper">
@@ -98,9 +66,7 @@ const Achievements = () => {
                 tabIndex={0}
                 onKeyDown={(e) =>
                   e.key === "Enter" &&
-                  setExpandedId(
-                    expandedId === req.event_id ? null : req.event_id
-                  )
+                  setExpandedId(expandedId === req.event_id ? null : req.event_id)
                 }
               >
                 <div className="letter-card__header">
@@ -112,7 +78,7 @@ const Achievements = () => {
                   </span>
                 </div>
                 <p className="letter-desc">
-                  Event Name: {req.event_name} <br />
+                  Organiser: {req.organiser} <br />
                   End Date: {new Date(req.end_date).toLocaleDateString()}
                 </p>
               </div>
@@ -122,29 +88,25 @@ const Achievements = () => {
                   <div className="preview-header">
                     <h3 className="preview-title">{req.event_name}</h3>
                     <p>
-                      Event Name: <b>{req.event_name}</b>
+                      Organiser: <b>{req.organiser}</b>
                     </p>
                     <p>
                       End Date: {new Date(req.end_date).toLocaleDateString()}
                     </p>
+                    <p>
+                      Status:{" "}
+                      <span
+                        className={`status status--${req.permission_letter_status}`}
+                      >
+                        {req.permission_letter_status}
+                      </span>
+                    </p>
                   </div>
-
                   <div className="preview-body">
-  {/* Show upload form only when filter = false (Not uploaded certificates) */}
-  {!filter ? (
-    <form onSubmit={(e) => handleSubmit(e, req.event_id)}>
-      <input
-        type="file"
-        name="file"
-        accept="application/pdf,image/*"
-      />
-      <button type="submit">Upload</button>
-    </form>
-  ) : (
-    <p className="uploaded-msg">✅ Certificate already uploaded</p>
-  )}
-</div>
-
+                    <div className="empty">
+                      Permission letter preview will be available once uploaded.
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -155,4 +117,4 @@ const Achievements = () => {
   );
 };
 
-export default Achievements;
+export default Studentletters;
