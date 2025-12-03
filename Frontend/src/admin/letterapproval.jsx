@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import './letterapp.css';
-//import { Document, Page, pdfjs } from "react-pdf";
-
-// PDF worker
-//pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+import { onAuthStateChanged } from "firebase/auth";
+import auth from "./config/firebase-config";
+import './css/letterapproval.css';
 
 export default function AdminLetterApproval() {
   const [filter, setFilter] = useState("pending");
@@ -12,87 +10,143 @@ export default function AdminLetterApproval() {
   const [expandedId, setExpandedId] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
+  const [user, setUser] = useState(null);
+  const [uid, setUid] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Get Firebase UID
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setUid(currentUser.uid);
+        console.log('Current user UID:', currentUser.uid);
+      } else {
+        setUser(null);
+        setUid(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Updated fetch URL to match backend endpoint
-useEffect(() => {
-  const fetchRequests = async () => {
-    try {
-      setLoading(true);
+  useEffect(() => {
+    if (!uid) return; // Don't fetch without UID
 
-      const res = await fetch(`http://localhost:3000/request?status=${filter}`);
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        
+        // Include UID in the request if your backend needs it
+        const res = await fetch(
+          `http://localhost:3000/api/requests?status=${filter}&uid=${uid}`,
+          {
+            headers: { Accept: "application/json" },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch requests: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          setRequests(data.data || []);
+        } else {
+          throw new Error(data.error || "Failed to fetch requests");
+        }
+      } catch (e) {
+        console.error("Error:", e);
+        setRequests([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRequests();
+  }, [filter, uid]); // Added uid as dependency
+
+  const handleStatusChange = async (requestId, newStatus) => {
+    if (!uid) {
+      console.error('No user authenticated');
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/requests/${requestId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            status: newStatus,
+            uid: uid, 
+          }),
+        }
+      );
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        throw new Error("Failed to update status");
       }
 
       const data = await res.json();
-      console.log("Fetched requests:", data); // ✅ log parsed data, not res
-      setRequests(data);
+      if (data.success) {
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.request_id === requestId ? { ...r, status: newStatus } : r
+          )
+        );
+      } else {
+        throw new Error(data.error || "Update failed");
+      }
     } catch (e) {
-      console.error("Error fetching requests:", e);
-    } finally {
-      setLoading(false);
+      console.error("Error:", e);
+      // Consider adding a UI notification for errors
     }
   };
-
-  fetchRequests(); // 👈 call the function
-}, [filter]);
-
-
-  // ✅ Updated status change URL to match backend endpoint
- const handleStatusChange = async (requestId, newStatus) => {
-  try {
-    const res = await fetch(`http://localhost:3000/request/${requestId}/status`, { 
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to update status");
-    }
-
-    const updated = await res.json(); // 👈 if backend returns updated request
-    console.log(updated);
-
-    // update requests list
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.request_id === requestId
-          ? { ...r, permission_letter_status: updated.permission_letter_status || newStatus }
-          : r
-      )
-    );
-
-    // keep expanded card as is
-    if (expandedId === requestId) {
-      setExpandedId(requestId);
-    }
-
-  } catch (e) {
-    console.error("Error updating request:", e);
-  }
-};
-
 
   const onPdfLoad = ({ numPages }) => {
     setNumPages(numPages);
     setPageNumber(1);
   };
 
-  // Rest of your component remains the same...
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="mainapproval">
+        <div className="empty">Checking authentication...</div>
+      </div>
+    );
+  }
+
+  // Show login prompt if no user
+  if (!uid) {
+    return (
+      <div className="mainapproval">
+        <div className="empty">Please log in to access this page.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="mainapproval">
-      {/* Your existing JSX code remains unchanged */}
       <div className="panelapprovaltop">
-        <h2>Permission Letter Approval</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>Permission Letter Approval</h2>
+          
+        </div>
         <select
           className="select"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="pending">Pending</option>
-          <option value="accepted">Accepted</option>
+          <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
       </div>
@@ -124,16 +178,16 @@ useEffect(() => {
                 <div className="letter-card__header">
                   <h3 className="letter-title">{req.student_name}</h3>
                   <span
-                    className={`status status--${req.permission_letter_status}`}
+                    className={`status status--${req.permission_letter_status || req.status}`}
                   >
-                    {req.permission_letter_status}
+                    {req.permission_letter_status || req.status}
                   </span>
                 </div>
                 <p className="letter-desc">
-                  Name:{req.name} <br></br>
-                  Roll_number:    {req.roll_number}<br></br>
-                  Event_name :    {req.event_name} <br></br>
-                  Event_Type :    {req.event_type}
+                  Name: {req.name || req.student_name}<br />
+                  Roll Number: {req.roll_number}<br />
+                  Event Name: {req.event_name}<br />
+                  Event Type: {req.event_type}
                 </p>
 
                 {filter === "pending" && (
@@ -144,7 +198,7 @@ useEffect(() => {
                     <button
                       className="btn btn-accept"
                       onClick={() =>
-                        handleStatusChange(req.request_id, "accepted")
+                        handleStatusChange(req.request_id, "approved")
                       }
                     >
                       Accept
@@ -161,7 +215,7 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* Rest of your expanded view code remains the same */}
+              {/* Expanded view */}
               {expandedId === req.request_id && (
                 <div className="preview-inline">
                   <div className="preview-header">
@@ -169,21 +223,33 @@ useEffect(() => {
                     <p className="preview-meta">
                       Event: <b>{req.event_name}</b> ({req.event_type})
                     </p>
+                    <p className="preview-meta">
+                      Roll Number: <b>{req.roll_number}</b>
+                    </p>
+                    <p className="preview-meta">
+                      Organizer: <b>{req.organizer}</b>
+                    </p>
+                    <p className="preview-meta">
+                      Event Level: <b>{req.event_level}</b>
+                    </p>
+                    <p className="preview-meta">
+                      Event Dates: <b>{req.start_date} to {req.end_date}</b>
+                    </p>
                     <p>
                       Status:{" "}
                       <span
-                        className={`status status--${req.permission_letter_status}`}
+                        className={`status status--${req.permission_letter_status || req.status}`}
                       >
-                        {req.permission_letter_status}
+                        {req.permission_letter_status || req.status}
                       </span>
                     </p>
 
-                    {req.permission_letter_status === "pending" && (
+                    {(req.permission_letter_status === "pending" || req.status === "pending") && (
                       <div className="preview-actions">
                         <button
                           className="btn btn-accept"
                           onClick={() =>
-                            handleStatusChange(req.request_id, "accepted")
+                            handleStatusChange(req.request_id, "approved")
                           }
                         >
                           Accept
@@ -203,6 +269,17 @@ useEffect(() => {
                   <div className="preview-body">
                     {req.letter_url ? (
                       <div className="pdf-container">
+                        <div className="empty">
+                          📄 Permission letter available<br />
+                          <a 
+                            href={req.letter_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ color: '#007bff', textDecoration: 'underline' }}
+                          >
+                            Click to view document
+                          </a>
+                        </div>
                         {/* 
                         <Document
                           file={req.letter_url}

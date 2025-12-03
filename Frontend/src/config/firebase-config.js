@@ -1,13 +1,14 @@
 import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import {initializeApp} from 'firebase/app';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyA0fGAcSapYO2ULU5byh61ycCviM7fimgc",
-  authDomain: "fir-fe16d.firebaseapp.com",
-  projectId: "fir-fe16d",
-  storageBucket: "fir-fe16d.firebasestorage.app",
-  messagingSenderId: "542004982416",
-  appId: "1:542004982416:web:6848f4a9f806d8a8431e15",
-  measurementId: "G-NFNCC9VGM7"
+  apiKey: "AIzaSyDLw0Rm5J5SS_rvVbGNM8QEY7eGQQ9Xu38",
+  authDomain: "eventizer-500af.firebaseapp.com",
+  projectId: "eventizer-500af",
+  storageBucket: "eventizer-500af.firebasestorage.app",
+  messagingSenderId: "727257688523",
+  appId: "1:727257688523:web:8e5b648d31d1fdbf21ae4e",
+  measurementId: "G-Y4FP956FJ1"
 };
 
 const app = initializeApp(firebaseConfig);

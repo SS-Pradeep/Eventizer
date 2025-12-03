@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import myImage from './assets/arrow.png';
-import './adminprofilefill.css';
+import './css/adminprofilefill.css';
 import { useState, useEffect } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
@@ -20,7 +20,9 @@ const Adminprofilefill = ()=>{
               const auth = getAuth();
               const unsubscribe = onAuthStateChanged(auth, (user) => {
                   if (user) {
-                      Setuid(user.uid); } 
+                      Setuid(user.uid); 
+                      SetEmail(user.email);
+                    } 
                   else {
                       navigate("/login");}
                       setLoading(false);
@@ -45,7 +47,7 @@ const Adminprofilefill = ()=>{
         };
          
         try {
-            const response = await fetch("http://localhost:3000/adminregister", { 
+            const response = await fetch("http://localhost:3000/api/adminregister", { 
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

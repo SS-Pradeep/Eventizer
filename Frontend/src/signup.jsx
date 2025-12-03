@@ -5,7 +5,7 @@ import {  useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import download from './assets/download.png';
 
-function Signup() {
+const Signup = ()=>{
   
 
   const [email,setemail] = useState('');
@@ -14,18 +14,18 @@ function Signup() {
   const [success,setsuccess] = useState(false);
   const navigate = useNavigate();
 
-  const Changeforadmin = ()=>{
+  const Changeforlogin = ()=>{
     navigate('/login');
   };
 
 
-  const loginwithgoogle = async () => {
+  const signupwithgoogle = async () => {
     seterror(null);
     const provider = new GoogleAuthProvider();
     try {
       const userCred = await signInWithPopup(auth, provider);
       const userEmail = userCred.user.email;
-      const uid = userCredential.user.uid;
+      const uid = userCred.user.uid;
 
       const isadmin = userEmail.endsWith("@tce.edu");
       const isstudent = userEmail.endsWith("@student.tce.edu");
@@ -38,9 +38,9 @@ function Signup() {
       console.log('Google user signed in:', userCred.user);
       setsuccess(true);
       if (isadmin) {
-      navigate("/admin",{state:{uid}}); 
+      navigate("/admin"); 
     } else if (isstudent) {
-      navigate("/profilefill",{state:{uid}}); 
+      navigate("/student/profilefill"); 
     }
     } catch (err) {
       seterror(err.message);
@@ -63,15 +63,38 @@ function Signup() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
+      const userEmail = userCredential.user.email;
       console.log('User signed up:', userCredential.user);
       setsuccess(true);
-      if(isadmin)
-      {
-        navigate('/admin',{state:{uid}});
+      if(isadmin && userEmail == "hodamcs@tce.edu"){
+        try{
+          const response = await fetch('http://localhost:3000/superadmin/create', {
+            method: 'POST',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name:"HODAMCS", uid: uid, email: userEmail ,role:"superadmin" })
+          });
+          if (!response.ok) {
+            throw new Error('Failed to create superadmin record');
+          }
+          console.log('Superadmin record created successfully');
+          if(response.ok){
+             navigate(`/superadmin`);
+          }
+         
+        }
+        catch(err){
+          console.error('Error creating superadmin record:', err);
+        } 
+        
       }
+      else if(isadmin)
+      {
+        navigate('/admin');
+      }
+      
       else if(isstudent)
       {
-        navigate('/profilefill',{state:{uid}});
+        navigate(`/student/profilefill`);
       }
       
       
@@ -101,13 +124,13 @@ function Signup() {
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       </div>
       <div className='Signupwithgoogle'>
-        <button className='googlesignupbutton' onClick={loginwithgoogle}><img src={download} height='30' width='30'/>Signup with Google</button>
+        <button className='googlesignupbutton' onClick={signupwithgoogle}><img src={download} height='30' width='30'/>Signup with Google</button>
       </div>
 
      
 
       <div className='signupforadmin'>
-        <button className='signupforadminbutton' onClick={Changeforadmin}>Login</button>
+        <button className='signupforadminbutton' onClick={Changeforlogin}>Login</button>
         
       </div>
 

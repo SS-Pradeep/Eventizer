@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import './letterapp.css';
+import './css/letterapproval.css';
 
-export default function AdminLetterApproval() {
+export default function SuperAdminLetterApproval() {
   const [filter, setFilter] = useState("pending");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,15 +26,22 @@ export default function AdminLetterApproval() {
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:3000/superrequest?status=${filter}`);
+      const res = await fetch(`http://localhost:3000/api/superrequest?status=${filter}`);
       
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       
       const data = await res.json();
-      setRequests(data);
+      console.log('Fetched data:', data);
+      
+      if (data.success) {
+        setRequests(data.data || []);
+      } else {
+        setRequests([]);
+      }
       setSelectedRequests(new Set());
     } catch (e) {
       console.error("Error fetching requests:", e);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -74,12 +81,12 @@ export default function AdminLetterApproval() {
     });
   }, [groupedRequests]);
 
-  // Unified optimal update function - handles both single and bulk
+  // Fixed update function with correct endpoint
   const handleUpdate = useCallback(async (requestIds, newStatus) => {
     setUpdating(true);
     
     try {
-      const response = await fetch('http://localhost:3000/superrequests/update', {
+      const response = await fetch('http://localhost:3000/api/superrequests/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -94,20 +101,12 @@ export default function AdminLetterApproval() {
       }
 
       const result = await response.json();
+      console.log('Update result:', result);
 
-      // Optimized state update - only update changed records
-      if (result.updated.length > 0) {
+      // Remove updated requests from current view if they're no longer in this filter
+      if (result.success && result.updated.length > 0) {
         setRequests(prev => 
-          prev.map(req => {
-            if (result.updated.includes(req.request_id)) {
-              return {
-                ...req,
-                permission_letter_status: newStatus,
-                curr_stage: newStatus === 'pending' ? 'superadmin' : 'completed'
-              };
-            }
-            return req;
-          })
+          prev.filter(req => !result.updated.includes(req.request_id))
         );
 
         // Clear selections for updated requests
@@ -116,14 +115,14 @@ export default function AdminLetterApproval() {
           result.updated.forEach(id => newSelected.delete(id));
           return newSelected;
         });
+
+        // Success message
+        const count = Array.isArray(requestIds) ? requestIds.length : 1;
+        alert(`${count} request(s) ${newStatus} successfully by HOD!`);
       }
 
-      // User feedback
-      if (result.failed.length > 0) {
+      if (result.failed && result.failed.length > 0) {
         alert(`${result.updated.length} updated, ${result.failed.length} failed`);
-      } else {
-        const count = Array.isArray(requestIds) ? requestIds.length : 1;
-        alert(`${count} request(s) ${newStatus} successfully!`);
       }
 
     } catch (error) {
@@ -162,14 +161,14 @@ export default function AdminLetterApproval() {
   return (
     <div className="mainapproval">
       <div className="panelapprovaltop">
-        <h2>Permission Letter Approval</h2>
+        <h2>Permission Letter Approval (HOD)</h2>
         <select
           className="select"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="pending">Pending</option>
-          <option value="accepted">Accepted</option>
+          <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
       </div>
@@ -180,7 +179,7 @@ export default function AdminLetterApproval() {
           <span>Selected: {selectedRequests.size} requests</span>
           <button 
             className="btn btn-accept"
-            onClick={() => handleUpdate(Array.from(selectedRequests), "accepted")}
+            onClick={() => handleUpdate(Array.from(selectedRequests), "approved")}
             disabled={updating}
           >
             {updating ? 'Updating...' : `Accept Selected (${selectedRequests.size})`}
@@ -258,20 +257,25 @@ export default function AdminLetterApproval() {
                             <h4 className="letter-title">{req.name}</h4>
                             <span className={`status status--${req.permission_letter_status}`}>
                               {req.permission_letter_status}
+                              {req.permission_letter_status === 'approved' && req.approved_by && 
+                                ` by ${req.approved_by}`}
+                              {req.permission_letter_status === 'rejected' && req.rejected_by && 
+                                ` by ${req.rejected_by}`}
                             </span>
                           </div>
                         </div>
                         
                         <p className="letter-desc">
                           Roll Number: {req.roll_number}<br/>
-                          Event Type: {req.event_type}
+                          Event Type: {req.event_type}<br/>
+                          Organizer: {req.organizer}
                         </p>
 
                         {filter === "pending" && !selectedRequests.has(req.request_id) && (
                           <div className="actions" onClick={(e) => e.stopPropagation()}>
                             <button
                               className="btn btn-accept"
-                              onClick={() => handleUpdate(req.request_id, "accepted")}
+                              onClick={() => handleUpdate(req.request_id, "approved")}
                               disabled={updating}
                             >
                               Accept
@@ -286,51 +290,6 @@ export default function AdminLetterApproval() {
                           </div>
                         )}
                       </div>
-
-                      {expandedId === req.request_id && (
-                        <div className="preview-inline">
-                          <div className="preview-header">
-                            <h3 className="preview-title">{req.name}</h3>
-                            <p className="preview-meta">
-                              Event: <b>{req.event_name}</b> ({req.event_type})
-                            </p>
-                            <p>
-                              Status: <span className={`status status--${req.permission_letter_status}`}>
-                                {req.permission_letter_status}
-                              </span>
-                            </p>
-
-                            {req.permission_letter_status === "pending" && (
-                              <div className="preview-actions">
-                                <button
-                                  className="btn btn-accept"
-                                  onClick={() => handleUpdate(req.request_id, "accepted")}
-                                  disabled={updating}
-                                >
-                                  Accept
-                                </button>
-                                <button
-                                  className="btn btn-reject"
-                                  onClick={() => handleUpdate(req.request_id, "rejected")}
-                                  disabled={updating}
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="preview-body">
-                            {req.letter_url ? (
-                              <div className="pdf-container">
-                                {/* PDF viewer code */}
-                              </div>
-                            ) : (
-                              <div className="empty">No permission letter available.</div>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

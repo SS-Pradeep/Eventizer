@@ -14,12 +14,12 @@ app.use(cors({
 
   
 const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT || 'play.min.io',
-    port: parseInt(process.env.MINIO_PORT) || 9000,
-    useSSL: process.env.MINIO_USE_SSL === 'true' || true,
-    accessKey: process.env.MINIO_ACCESS_KEY || 'Q3AM3UQ867SPQQA43P2F',
-    secretKey: process.env.MINIO_SECRET_KEY || 'zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG'
-  });
+  endPoint: '127.0.0.1',
+  port: 9000,
+  useSSL: false,
+  accessKey: 'pradeep',
+  secretKey: 'pradeepss007'
+});
 
 
 const pool = new Pool({
@@ -32,340 +32,639 @@ const pool = new Pool({
 
 pool.connect().then(()=>console.log("YEah.."));
 
+app.post('/api/eventregister', async (req, res) => {
+const {
+  event_name,
+  event_type,
+  description,
+  start_date,
+  end_date,
+  permissionrequired,
+  event_level,
+  Certificateupload = false, // Default to false if not provided
+  organizer
+} = req.body;
+    let client;
+    const status = permissionrequired ? 'upcoming' : 'completed';
 
-app.post('/eventregister', async (req, res) => {
-    const { name, event_type, description, st_date, end_date, permissionrequired, event_level, certificate_upload, organizer } = req.body;
-
-    const client = await pool.connect();
-    
     try {
-        await client.query('BEGIN');
-
-        // Validate required fields
-        if (!name || !event_type || !st_date || !end_date) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: name, event_type, st_date, end_date'
-            });
-        }
+        client = await pool.connect();
+        
 
         const insert_query = `
-            INSERT INTO event (event_name, event_type, description, st_date, end_date, permission_required, event_level, certificate_upload, organiser) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+            INSERT INTO event (event_name, event_type, description, start_date, end_date, permission_required, certificate_upload, event_level, organizer, status, created_at, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
             RETURNING event_id
         `;
         
-        const values = [name, event_type, description, st_date, end_date, permissionrequired, event_level, certificate_upload, organizer];
+        const values = [
+            event_name, 
+            event_type, 
+            description, 
+            start_date, 
+            end_date, 
+            permissionrequired, //is permission needed for the event or not
+            Certificateupload ,     // Default to false if not provided
+            event_level, 
+            organizer,
+            status
+        ];
 
         const result = await client.query(insert_query, values);
-        const event_id = parseInt(result.rows[0].event_id); // ✅ Fixed: Proper extraction and conversion
+        const event_id = result.rows[0].event_id;
 
-        await client.query('COMMIT');
-
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
-            message: "Event registered successfully ✅",
-            event_id: event_id,
+            message: "Event registered successfully",
+            event_id: event_id
         });
 
     } catch (err) {
-        await client.query('ROLLBACK');
-        console.error('Error registering event:', err);
-        return res.status(500).json({
-            success: false,
-            error: "Event registration failed",
-            message: err.message
-        });
+        console.error(err);
+        res.status(500).json({ message: "Insert failed" });
     } finally {
-        client.release();
+        if (client) {
+            client.release();
+        }
     }
 });
 
 
 //after student signin
-app.post('/studentregister', async (req,res)=>{
+app.post('/api/studentregister', async (req,res)=>{
 
-    const {firebase_uid,name,roll_number,graduation_year,profileupdated} = req.body;
+    const { 
+        firebase_uid, 
+        name, 
+        roll_number, 
+        graduation_year, 
+        student_class, 
+        section, 
+        email 
+    } = req.body;
 
+    // Validate required fields
+    if (!firebase_uid || !name || !roll_number || !graduation_year || !student_class || !section || !email) {
+        return res.status(400).json({
+            error: "Validation failed",
+            message: "All fields are required"
+        });
+    }
+    try{
+       client = await pool.connect();
+        
+        await client.query('BEGIN');
+        
+        const find_class_query = `
+            SELECT class_id FROM class 
+            WHERE class_name = $1  AND section = $2
+        `;
 
-    try {
-        const Client = await pool.connect();
-        const insert_query = "INSERT INTO student (name,firebase_uid,roll_number,graduation_year,profileupdated) values($1,$2,$3,$4,$5)";
-        const values = [name,firebase_uid,roll_number,graduation_year,profileupdated];
-        const result = await Client.query(insert_query, values);
-        res.status(200).send({ message: "Insert successful" });
-    } 
-    catch (err) {
-    console.error(err);
-    res.status(500).send("Insert failed");
-  }
-    
+      const find_class_query_1 = await client.query(find_class_query, [student_class, section]);
+        const insert_student_query = `
+            INSERT INTO student (firebase_uid, name, roll_number, email, class_id, created_at, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING student_id, name, roll_number, email, class_id
+        `;
+        const class_result = await client.query(find_class_query, [student_class, section]);
+        if (class_result.rows.length === 0) {
+          throw new Error("Class not found");
+        }      
+        const class_id = class_result.rows[0].class_id;
+        const student_values = [firebase_uid, name, roll_number, email, class_id];
+        const student_result = await client.query(insert_student_query, student_values);
+        
+        // Commit the transaction
+        await client.query('COMMIT');
+        return res.status(201).json({ 
+            success: true,
+            message: "Student registration successful"
+        });
+
+    }
+    catch(err){
+      return res.json({
+        message : "Error in inserting"
+      });
+    };
 });
 
 //after admin signin
-app.post('/adminregister', async (req,res)=>{
+app.post('/api/adminregister', async (req, res) => {
+    const { name, firebase_uid, email } = req.body;
 
-    const {name,firebase_uid,email} = req.body;
-    try {
-        const Client = await pool.connect();
-        const insert_query = "INSERT INTO admin (name,firebase_uid,email) values($1,$2,$3)";
-        const values = [name,firebase_uid,email];
-        const result = await Client.query(insert_query, values);
-        res.status(200).send({ message: "Insert successful" }); 
-    } 
-    catch (err) {
-    console.error(err);
-    res.status(500).send("Insert failed");
-  }
+    let client;
     
+    try {
+        client = await pool.connect();
+        
+        const insert_admin_query = `
+            INSERT INTO admin (firebase_uid, name, email, role, created_at, updated_at) 
+            VALUES ($1, $2, $3, 'admin', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `;
+        
+        const admin_values = [firebase_uid, name, email];
+        await client.query(insert_admin_query, admin_values);
+        
+        return res.status(200).json({ message: "Insert successful" });
+        
+    } catch (err) {
+        console.error(err);
+        return  res.status(500).json({ message: "Insert failed" });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
 });
+
 
 //after click the permisson letter sending button
-app.post('/requestregister', async (req,res)=>{
+app.post('/api/requests', async (req, res) => {
+    const { student_id, event_id, admin_id } = req.body;
 
-    const {name,studentid,eventid,permission_letter_status,admin_id} = req.body;
+    let client;
+    
     try {
-        const Client = await pool.connect();
-        const insert_query = "INSERT INTO request (name,studentid,eventid,permission_letter_status,admin_id) values($1,$2,$3,$4,$5)";
-        const values = [name,studentid,eventid,permission_letter_status,admin_id];
-        const result = await Client.query(insert_query, values);
-    } 
-    catch (err) {
-    console.error(err);
-    res.status(500).send("Insert failed");
-  }
+        client = await pool.connect();
+        
+        // Validate required fields
+        if (!student_id || !event_id) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: student_id, event_id'
+            });
+        }
+
+        const insert_query = `
+            INSERT INTO request (student_id, event_id, status, current_stage, submitted_at, created_at, updated_at) 
+            VALUES ($1, $2, 'pending', 'tutor', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+            RETURNING request_id, student_id, event_id, status, current_stage, submitted_at
+        `;
+        
+        const values = [student_id, event_id];
+        const result = await client.query(insert_query, values);
+        
+        const new_request = result.rows[0];
+
+        return res.status(200).json({
+            success: true,
+            message: "Request submitted successfully",
+            data: {
+                request_id: new_request.request_id,
+                student_id: new_request.student_id,
+                event_id: new_request.event_id,
+                status: new_request.status,
+                current_stage: new_request.current_stage,
+                submitted_at: new_request.submitted_at
+            }
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Insert failed" });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
 });
+
 
 //after permission letter generated
-app.post('/letterregister', async (req,res)=>{
+app.post('/api/letters', async (req, res) => {
+    const { req_id, filename, minio_object_key } = req.body;
 
-    const {requestid,file_key,url} = req.body;
+    let client;
+    
     try {
-        const Client = await pool.connect();
-        const insert_query = "INSERT INTO letters (name,studentid,eventid,permission_letter_status,admin_id) values($1,$2,$3,$4,$5)";
-        const values = [requestid,file_key,url];
-        const result = await Client.query(insert_query, values);
-    } 
-    catch (err) {
-    console.error(err);
-    res.status(500).send("Insert failed");
-  }
+        client = await pool.connect();
+        
+        // Validate required fields
+        if (!req_id || !filename || !minio_object_key) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: req_id, filename, minio_object_key'
+            });
+        }
+
+        const insert_query = `
+            INSERT INTO permission_letter (req_id, filename, minio_object_key, created_at, updated_at) 
+            VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+            RETURNING perm_id, req_id, filename, minio_object_key, created_at
+        `;
+        
+        const values = [req_id, filename, minio_object_key];
+        const result = await client.query(insert_query, values);
+        
+        const new_letter = result.rows[0];
+
+        return res.status(200).json({
+            success: true,
+            message: "Permission letter uploaded successfully",
+            data: {
+                perm_id: new_letter.perm_id,
+                req_id: new_letter.req_id,
+                filename: new_letter.filename,
+                minio_object_key: new_letter.minio_object_key,
+                created_at: new_letter.created_at
+            }
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Insert failed" });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
 });
+
 
 //after certificate approval
-app.post('/certificateregister', async (req,res)=>{
-
-    const {requestid,studentid,file_key,url} = req.body;
+app.post('/api/certificates/:requestId', async (req, res) => {
+    const { requestId } = req.params;
+    const { req_id, filename, minio_object_key } = req.body;
+    
+    let client;
+    
     try {
-        const Client = await pool.connect();
-        const insert_query = "INSERT INTO certificates (requestid,studentid,file_key,url) values($1,$2,$3,$4)";
-        const values = [requestid,studentid,file_key,url];
-        const result = await Client.query(insert_query, values);
-    } 
-    catch (err) {
-    console.error(err);
-    res.status(500).send("Insert failed");
-  }
+        // Validate required fields
+        if (!req_id || !filename || !minio_object_key) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: req_id, filename, minio_object_key'
+            });
+        }
+
+        client = await pool.connect();
+        
+        const insert_query = `
+            INSERT INTO certificate (req_id, filename, minio_object_key, created_at) 
+            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+            RETURNING certificate_id, req_id, filename, minio_object_key, created_at
+        `;
+        
+        const values = [req_id, filename, minio_object_key];
+        const result = await client.query(insert_query, values);
+        
+        res.status(201).json({
+            success: true,
+            message: "Certificate registered successfully",
+            data: result.rows[0]
+        });
+        
+    } catch (err) {
+        console.error('Certificate registration error:', err);
+        res.status(500).json({
+            success: false,
+            error: "Failed to register certificate"
+        });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
 });
 
-//after certificate approval
-app.post('/leaderboardregister', async (req,res)=>{
 
-    const {student_id,total_score,academic_score,non_academic_score} = req.body;
-    try {
-        const Client = await pool.connect();
-        const insert_query = "INSERT INTO leaderboard (student_id,total_score,academic_score,non_academic_score) values($1,$2,$3,$4)";
-        const values = [student_id,total_score,academic_score,non_academic_score];
-        const result = await Client.query(insert_query, values);
-    } 
-    catch (err) {
-    console.error(err);
-    res.status(500).send("Insert failed");
-  }
-});
 
 //while sreaching for student -- admin
-app.get('/searchstudent/:id', async(req, res) => {
+app.get('/api/students/:id/events', async(req, res) => {
     const {id} = req.params;
+    
     try {
-        const result = await Client.query(
-          `
-          SELECT e.event_name, COUNT(*) as event_count
+        const query = `
+          SELECT 
+            e.event_name, 
+            e.event_type,
+            COUNT(*) as event_count,
+            MAX(r.status) as latest_status
           FROM request r
-          JOIN events e ON r.event_id = e.event_id  
+          JOIN event e ON r.event_id = e.event_id  
           WHERE r.student_id = $1
-          GROUP BY e.event_name
-          ORDER BY event_count DESC;`,
-          [id]  
-        )
+          GROUP BY e.event_name, e.event_type
+          ORDER BY event_count DESC
+        `;
+        
+        const result = await pool.query(query, [id]);
+        
         if (result.rows.length === 0) {
-            return res.status(404).send("Search result not found");
+            return res.status(404).json({ 
+                success: false,
+                message: "No events found for this student" 
+            });
         }
         
-        res.json(result.rows);
-    }
-    catch(err) {
-        console.error(err);
-        res.status(500).send("Query failed"); // More accurate error message
+        return res.json({
+            success: true,
+            student_id: id,
+            events: result.rows,
+            total_events: result.rows.length
+        });
+        
+    } catch(err) {
+        console.error('Search student events error:', err);
+        return res.status(500).json({ error: "Failed to search student events" });
     }
 });
+
 
 
 //student-search ny name
-app.get('/searchstudent', async (req, res) => {
-  const { name,roll,year } = req.body;
+app.get('/api/students/search', async (req, res) => {
+    try {
+        const { name, roll,  class: className, section } = req.query;
 
-  try {
-    if(name!=""){
-    const result = await Client.query(
-      "SELECT id,name,roll_number,year FROM student WHERE LOWER(name) = LOWER($1)",
-      [name]
-    );}
-    if(roll!=""){
-      const result = await Client.query(
-      "SELECT id,name,roll_number,year FROM student WHERE roll_number = $1",
-      [roll]
-    );
+        // Build dynamic SQL query
+        let query = `
+            SELECT 
+                s.student_id as id,
+                s.name,
+                s.roll_number as roll,
+                c.class_name,
+                c.section
+            FROM student s
+            INNER JOIN class c ON s.class_id = c.class_id
+            WHERE 1=1
+        `;
+
+        const params = [];
+        let paramCount = 0;
+
+        // Add conditions based on provided parameters
+        if (name) {
+            paramCount++;
+            query += ` AND s.name ILIKE $${paramCount}`;
+            params.push(`%${name}%`);
+        }
+
+        if (roll) {
+            paramCount++;
+            query += ` AND s.roll_number = $${paramCount}`;
+            params.push(roll);
+        }
+
+        if (className) {
+            paramCount++;
+            query += ` AND c.class_name = $${paramCount}`;
+            params.push(className);
+        }
+
+        if (section) {
+            paramCount++;
+            query += ` AND c.section = $${paramCount}`;
+            params.push(section);
+        }
+
+        query += ` ORDER BY s.name ASC`;
+
+        console.log('Search query:', query);
+        console.log('Parameters:', params);
+
+        const result = await pool.query(query, params);
+
+        return res.status(200).json({
+            success: true,
+            students: result.rows,
+            count: result.rows.length
+        });
+
+    } catch (error) {
+        console.error('Error searching students:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to search students',
+            error: error.message
+        });
     }
-
-    
-    if (result.rows.length === 0) {
-      return res.status(404).send("Search result not found");
-    }
-
-    return res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).send("Search failed");
-  }
 });
 
 
-//updateding the letter permission as approved/rejected/pending
-app.put('/update-status/:id', async (req, res) => {
-  const requestId = req.params.id;
-  const { status } = req.body;
 
-  const allowedStatus = ['approved', 'rejected'];
-  if (!allowedStatus.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status value' });
-  }
-
+app.put('/api/requests/:id/status', async (req, res) => {
   try {
-    const query = `UPDATE Request SET permission_letter_status = $1 WHERE request_id = $2 RETURNING *`;
-    const result = await pool.query(query, [status, requestId]);
+    const requestId = req.params.id;
+    const { status, uid } = req.body; 
+    // Validate request ID
+    if (!requestId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Request ID is required' 
+      });
+    }
+
+    // Validate UID
+    if (!uid) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Admin UID is required' 
+      });
+    }
+
+    // Get admin name from database using UID
+    const adminQuery = await pool.query('SELECT name FROM admin WHERE firebase_uid = $1', [uid]);
+    
+    if (adminQuery.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Admin not found' 
+      });
+    }
+    
+    const adminName = adminQuery.rows[0].name;
+
+    // Simple validation
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Status must be approved or rejected' 
+      });
+    }
+
+    let query;
+    let params;
+
+    if (status === 'approved') {
+      // If approved: keep status as 'pending' and change current_stage to 'super_admin'
+      query = `
+        UPDATE request 
+        SET current_stage = $1, approved_by = $2, updated_at = CURRENT_TIMESTAMP 
+        WHERE request_id = $3 
+        RETURNING request_id, status, current_stage, approved_by, updated_at
+      `;
+      params = ['super_admin', adminName, requestId];
+    } else if (status === 'rejected') {
+      // If rejected: change status to 'rejected' and current_stage to 'completed'
+      query = `
+        UPDATE request 
+        SET status = $1, current_stage = $2, rejected_by = $3, updated_at = CURRENT_TIMESTAMP 
+        WHERE request_id = $4 
+        RETURNING request_id, status, current_stage, rejected_by, updated_at
+      `;
+      params = ['rejected', 'completed', adminName, requestId];
+    }
+
+    console.log('Update Query:', query);
+    console.log('Parameters:', params);
+
+    const result = await pool.query(query, params);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Request ID not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Request not found' 
+      });
     }
 
-    res.status(200).json({
-      message: 'Status updated successfully',
-      updated: result.rows[0]
+    return res.status(200).json({
+      success: true,
+      message: `Request ${status} successfully by ${adminName}`,
+      data: result.rows[0]
     });
+
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error updating status:', err);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Failed to update status',
+      details: err.message
+    });
   }
 });
 
-//search by year
-app.get('/search-by-year/:year',async (req,res)=>{
-    const year = parseInt(req.params.year);
-    try {
-    const result = await pool.query(`
-      SELECT * FROM events
-      WHERE EXTRACT(YEAR FROM st_date) = $1
-    `, [year]);
 
-    res.status(200).json(result.rows);
+
+//search by year
+app.get('/search-by-year/:year', async (req, res) => {
+  try {
+    const year = parseInt(req.params.year);
+    const { event_type, limit = 20 } = req.query;
+
+    // Simple validation
+    if (isNaN(year) || year < 2000 || year > 2030) {
+      return res.status(400).json({ 
+        error: 'Invalid year. Must be between 2000-2030' 
+      });
+    }
+
+    // Build simple query
+    let query = `
+      SELECT 
+        event_id,
+        event_name,
+        event_type,
+        start_date,
+        end_date,
+        organizer,
+        certificate_upload
+      FROM event 
+      WHERE EXTRACT(YEAR FROM start_date) = $1
+    `;
+    
+    const params = [year];
+
+    // Optional event type filter
+    if (event_type) {
+      query += ` AND event_type ILIKE $2`;
+      params.push(`%${event_type}%`);
+    }
+
+    query += ` ORDER BY start_date DESC LIMIT $${params.length + 1}`;
+    params.push(parseInt(limit));
+
+    const result = await pool.query(query, params);
+
+    return res.json({
+      success: true,
+      year: year,
+      events: result.rows,
+      count: result.rows.length
+    });
+
   } catch (err) {
-    console.error('Error fetching events by year', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error:', err);
+    return res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
 //admin-notification
 app.get('/admin/notifications', async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { uid, limit = 10, offset = 0 } = req.query;
+    
+    // Validate required parameter
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        error: 'Firebase UID is required'
+      });
+    }
+
+    const query = `
       SELECT 
         r.request_id,
+        r.submitted_at,
         s.name AS student_name,
-        s.graduation_year,
-        CASE 
-          WHEN EXTRACT(YEAR FROM CURRENT_DATE) = s.graduation_year THEN '5th Year'
-          WHEN EXTRACT(YEAR FROM CURRENT_DATE) = s.graduation_year - 1 THEN '4th Year'
-          WHEN EXTRACT(YEAR FROM CURRENT_DATE) = s.graduation_year - 2 THEN '3rd Year'
-          WHEN EXTRACT(YEAR FROM CURRENT_DATE) = s.graduation_year - 3 THEN '2nd Year'
-          WHEN EXTRACT(YEAR FROM CURRENT_DATE) = s.graduation_year - 4 THEN '1st Year'
-          ELSE 'Graduated or Invalid'
-        END AS current_year
-      FROM 
-        request r
-      JOIN 
-        student s ON r.student_id = s.student_id
-      WHERE 
-        r.permission_letter_status = 'pending'
-    `);
+        s.roll_number,
+        c.class_name,
+        c.section,
+        e.event_name,
+        e.event_type,
+        e.event_level,
+        e.organizer,
+        e.start_date,
+        e.end_date
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN class c ON s.class_id = c.class_id
+      INNER JOIN event e ON r.event_id = e.event_id
+      INNER JOIN admin a ON c.class_teacher_id = a.admin_id
+      WHERE r.current_stage = 'tutor' 
+        AND r.status = 'pending'
+        AND a.firebase_uid = $1
+      ORDER BY r.submitted_at ASC
+      LIMIT $2 OFFSET $3
+    `;
 
-    res.json(result.rows);
+    // Fixed parameter order: uid, limit, offset
+    const result = await pool.query(query, [uid, parseInt(limit), parseInt(offset)]);
+
+    // Count query with same filtering for accurate pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN class c ON s.class_id = c.class_id
+      INNER JOIN admin a ON c.class_teacher_id = a.admin_id
+      WHERE r.current_stage = 'tutor' 
+        AND r.status = 'pending'
+        AND a.firebase_uid = $1
+    `;
+
+    const countResult = await pool.query(countQuery, [uid]);
+    const totalCount = parseInt(countResult.rows[0].total);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        notifications: result.rows,
+        total: totalCount,
+      }
+    });
+
   } catch (error) {
-    console.error('Error fetching notifications', error);
-    res.status(500).json({ error: 'Failed to fetch notifications' });
+    console.error('Error fetching admin notifications:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch notifications',
+      message: 'Database error occurred'
+    });
   }
 });
 
 //pie-chart for dashboard
-app.get('/dashboard/event-participation', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        e.name AS event_name,
-        COUNT(r.student_id) AS student_count
-      FROM 
-        participation_requests r
-      JOIN 
-        events e ON r.event_id = e.event_id
-      GROUP BY 
-        e.name;
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching event data:', err);
-    res.status(500).send('Failed to fetch data');
-  }
-});
-
-//dash-board-participation
-app.get('/participation-percent/:year', async (req, res) => {
-  const { year } = req.params;
-
-  try {
-    const result = await pool.query(`
-      SELECT 
-        e.event_level,
-        COUNT(*) * 100.0 / (
-          SELECT COUNT(*) 
-          FROM participation_requests pr
-          JOIN students s ON pr.student_id = s.student_id
-          JOIN events e2 ON pr.event_id = e2.event_id
-          WHERE s.graduation_year = $1
-            AND EXTRACT(YEAR FROM e2.st_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-        ) AS percentage
-      FROM participation_requests pr
-      JOIN students s ON pr.student_id = s.student_id
-      JOIN events e ON pr.event_id = e.event_id
-      WHERE s.graduation_year = $1
-        AND EXTRACT(YEAR FROM e.st_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-      GROUP BY e.event_level;
-    `, [year]);
-
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching participation data");
-  }
-});
 
 /*
 app.post('/upload-pdf', async (req, res) => {
@@ -392,12 +691,17 @@ app.post('/upload-pdf', async (req, res) => {
     return res.status(500).json({ success: false, msg: "Server error" });
   }
 });*/
+//uploading the pdf to minio bucket storage
+// PDF generation and upload endpoint
+
+
 app.post('/upload-pdf', async (req, res) => {
-  
-  const client = await pool.connect();
+  let client;
   let browser;
 
   try {
+    client = await pool.connect();
+    
     // Start database transaction
     await client.query('BEGIN');
 
@@ -412,14 +716,13 @@ app.post('/upload-pdf', async (req, res) => {
     }
 
     const { event_id: rawEventId, st_date, end_date, reason } = pdfData;
-    const bucketName = 'pdf-documents';
+    const bucketName = 'permissionletters';
     
-    // ✅ Fixed: Ensure event_id is properly converted to integer
+    // Ensure event_id is properly converted to integer
     const event_id = parseInt(rawEventId);
     
     console.log('Raw event_id:', rawEventId);
     console.log('Parsed event_id:', event_id);
-    console.log('event_id type:', typeof event_id);
 
     // Validate all required fields
     if (!st_date || !end_date || !reason || !uid || !event_id || isNaN(event_id)) {
@@ -437,10 +740,10 @@ app.post('/upload-pdf', async (req, res) => {
       });
     }
 
-    // Step 1: Get student_id
-    let student_id_value;
+    // Step 1: Get student_id and student name
+    let student_id_value, student_name;
     try {
-      const student_idQuery = `SELECT student_id FROM student WHERE firebase_uid = $1`;
+      const student_idQuery = `SELECT student_id, name FROM student WHERE firebase_uid = $1`;
       const student_result = await client.query(student_idQuery, [uid]);
       
       if (student_result.rows.length === 0) {
@@ -451,15 +754,18 @@ app.post('/upload-pdf', async (req, res) => {
       }
       
       student_id_value = student_result.rows[0].student_id;
+      student_name = student_result.rows[0].name;
       console.log('Student ID found:', student_id_value);
+      console.log('Student Name:', student_name);
     } catch(err) {
       console.error("Error fetching student:", err);
       throw new Error("Failed to fetch student data");
     }
 
-    // Step 2: Verify event exists
+    // Step 2: Verify event exists and get event details
+    let event_details;
     try {
-      const eventCheckQuery = `SELECT event_id FROM event WHERE event_id = $1`;
+      const eventCheckQuery = `SELECT event_id, event_name, organizer FROM event WHERE event_id = $1`;
       const eventResult = await client.query(eventCheckQuery, [event_id]);
       
       if (eventResult.rows.length === 0) {
@@ -469,7 +775,8 @@ app.post('/upload-pdf', async (req, res) => {
         });
       }
       
-      console.log('Event verified:', event_id);
+      event_details = eventResult.rows[0];
+      console.log('Event verified:', event_details);
     } catch(err) {
       console.error("Error verifying event:", err);
       throw new Error("Failed to verify event");
@@ -479,13 +786,12 @@ app.post('/upload-pdf', async (req, res) => {
     let actual_request_id;
     try {
       const insertRequestQuery = `
-        INSERT INTO request (student_id, event_id, permission_letter_status, admin_id) 
-        VALUES ($1, $2, $3, $4) 
+        INSERT INTO request (student_id, event_id, status, current_stage, submitted_at, created_at, updated_at) 
+        VALUES ($1, $2, 'pending', 'tutor', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
         RETURNING request_id
       `;
       
-      const requestResult = await client.query(insertRequestQuery, 
-        [student_id_value, event_id, "pending", null]);
+      const requestResult = await client.query(insertRequestQuery, [student_id_value, event_id]);
         
       actual_request_id = requestResult.rows[0].request_id;
       console.log('Request ID created:', actual_request_id);
@@ -494,7 +800,7 @@ app.post('/upload-pdf', async (req, res) => {
       throw new Error("Failed to create request");
     }
 
-    // Step 4: Generate PDF with enhanced error handling
+    // Step 4: Generate PDF with better content
     let pdfBuffer;
     try {
       browser = await puppeteer.launch({ 
@@ -542,33 +848,81 @@ app.post('/upload-pdf', async (req, res) => {
                 font-size: 12px;
                 color: #666;
               }
+              .details-table {
+                margin: 20px 0;
+                width: 100%;
+                border-collapse: collapse;
+              }
+              .details-table td {
+                padding: 8px;
+                border: 1px solid #ddd;
+              }
+              .details-table .label {
+                font-weight: bold;
+                background-color: #f5f5f5;
+                width: 30%;
+              }
             </style>
           </head>
           <body>
             <div class="header">
-              <h2>Leave Request Application</h2>
+              <h2>Permission Letter Request</h2>
               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
               <p><strong>Request ID:</strong> ${actual_request_id}</p>
             </div>
+            
             <div class="content">
               <p>Dear Sir/Madam,</p>
-              <p>I am writing to formally request leave from <strong>${new Date(st_date).toLocaleDateString()}</strong> 
-              to <strong>${new Date(end_date).toLocaleDateString()}</strong> due to <strong>${reason}</strong>.</p>
-              <p>I will ensure that all my current tasks are completed or properly delegated before my leave period begins. 
-              I am committed to ensuring a smooth transition of responsibilities during my absence.</p>
-              <p>I would be grateful if you could approve this leave request at your earliest convenience.</p>
+              
+              <p>I am writing to formally request permission to participate in the following event:</p>
+              
+              <table class="details-table">
+                <tr>
+                  <td class="label">Student Name:</td>
+                  <td>${student_name}</td>
+                </tr>
+                <tr>
+                  <td class="label">Student ID:</td>
+                  <td>${student_id_value}</td>
+                </tr>
+                <tr>
+                  <td class="label">Event Name:</td>
+                  <td>${event_details.event_name}</td>
+                </tr>
+                <tr>
+                  <td class="label">Organizer:</td>
+                  <td>${event_details.organizer}</td>
+                </tr>
+                <tr>
+                  <td class="label">Event Duration:</td>
+                  <td>${new Date(st_date).toLocaleDateString()} to ${new Date(end_date).toLocaleDateString()}</td>
+                </tr>
+                <tr>
+                  <td class="label">Reason for Participation:</td>
+                  <td>${reason}</td>
+                </tr>
+              </table>
+              
+              <p>I believe this event will contribute significantly to my academic and professional development. 
+              I will ensure that all my current academic responsibilities are completed or properly managed during this period.</p>
+              
+              <p>I kindly request your approval for my participation in this event.</p>
+              
               <p>Thank you for your time and consideration.</p>
               
               <div class="signature">
-                <p>Sincerely,</p>
-                <br>
+                <p>Respectfully yours,</p>
+                <br><br>
                 <p>_________________________</p>
-                <p>Student Signature</p>
+                <p>${student_name}</p>
                 <p>Student ID: ${student_id_value}</p>
+                <p>Date: ${new Date().toLocaleDateString()}</p>
               </div>
             </div>
+            
             <div class="footer">
-              <p>This is an automatically generated document. Request ID: ${actual_request_id}</p>
+              <p>This is an automatically generated permission letter. Request ID: ${actual_request_id}</p>
+              <p>Generated on: ${new Date().toLocaleString()}</p>
             </div>
           </body>
         </html>
@@ -600,107 +954,112 @@ app.post('/upload-pdf', async (req, res) => {
       }
     }
 
-    // Step 5: Upload to MinIO with proper error handling
-    let fileUrl, uploadResult;
+    // Step 5: Upload to MinIO
+    let minio_object_key;
+    let filename;
+    
     try {
+      // Check if bucket exists, create if it doesn't
       const bucketExists = await minioClient.bucketExists(bucketName);
       if (!bucketExists) {
         await minioClient.makeBucket(bucketName, 'us-east-1');
         console.log(`Bucket '${bucketName}' created successfully`);
       }
 
-      const fileKey = `leave-request-${actual_request_id}-${Date.now()}.pdf`;
+      // Create filename and object key
+      filename = `permission-letter-${actual_request_id}-${Date.now()}.pdf`;
+      minio_object_key = `requests/letters/2025/${filename}`;
       const buffer = Buffer.from(pdfBuffer);
       
-      uploadResult = await minioClient.putObject(
+      const uploadResult = await minioClient.putObject(
         bucketName,
-        fileKey,
+        minio_object_key,
         buffer,
         buffer.length,
         { 
           'Content-Type': 'application/pdf',
           'X-Amz-Meta-Request-Id': actual_request_id.toString(),
-          'X-Amz-Meta-Upload-Date': new Date().toISOString()
+          'X-Amz-Meta-Upload-Date': new Date().toISOString(),
+          'X-Amz-Meta-Original-Filename': filename,
+          'X-Amz-Meta-Student-Id': student_id_value.toString(),
+          'X-Amz-Meta-Event-Id': event_id.toString()
         }
       );
 
-      // Generate presigned URL (valid for 7 days)
-      fileUrl = await minioClient.presignedGetObject(bucketName, fileKey, 7 * 24 * 60 * 60);
-      
-      console.log("File uploaded to MinIO successfully");
-
-      // Step 6: Save to permission_letters table
-      const insertQuery = `
-        INSERT INTO permission_letters (request_id, file_key, url) 
-        VALUES ($1, $2, $3) 
-        RETURNING letter_id
-      `;
-
-      const dbResult = await client.query(insertQuery, [actual_request_id, fileKey, fileUrl]);
-      const { letter_id } = dbResult.rows[0];
-      
-      console.log('Permission letter saved to database:', letter_id);
-
-      // Commit the transaction
-      await client.query('COMMIT');
-      console.log("Transaction committed successfully");
-
-      // Return success response
-      return res.status(200).json({
-        success: true,
-        message: 'PDF generated, uploaded to MinIO, and saved to database successfully',
-        data: {
-          letter_id: letter_id,
-          request_id: actual_request_id,
-          student_id: student_id_value,
-          file_key: fileKey,
-          url: fileUrl,
-          bucket_name: bucketName,
-          etag: uploadResult,
-          leave_period: {
-            start_date: st_date,
-            end_date: end_date,
-            reason: reason
-          }
-        }
-      });
+      console.log("File uploaded to MinIO successfully:", uploadResult);
 
     } catch (minioError) {
       console.error("MinIO upload error:", minioError);
-      throw new Error(`File upload failed: ${minioError.message}`);
+      throw new Error(`MinIO upload failed: ${minioError.message}`);
     }
 
-  } catch (error) {
-    // Rollback transaction on any error
+    // Step 6: Save to permission_letter table
+    let perm_id;
     try {
-      await client.query('ROLLBACK');
-      console.log("Transaction rolled back");
-    } catch (rollbackError) {
-      console.error("Rollback error:", rollbackError);
+      const insertLetterQuery = `
+        INSERT INTO permission_letter (req_id, filename, minio_object_key, created_at, updated_at) 
+        VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+        RETURNING perm_id
+      `;
+
+      const letterResult = await client.query(insertLetterQuery, [actual_request_id, filename, minio_object_key]);
+      perm_id = letterResult.rows[0].perm_id;
+      
+      console.log('Permission letter saved to database:', perm_id);
+
+    } catch (dbError) {
+      console.error("Database save error:", dbError);
+      throw new Error(`Database save failed: ${dbError.message}`);
     }
 
-    console.error('Complete error details:', error);
-    
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to process PDF upload request',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? {
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      } : undefined
+    // Commit the transaction
+    await client.query('COMMIT');
+    console.log("Transaction committed successfully");
+
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: 'Permission letter generated and saved successfully',
+      data: {
+        request_id: actual_request_id,
+        filename: filename,
+        perm_id: perm_id,
+        event_id: event_id,
+        object_key: minio_object_key,
+        upload_timestamp: new Date().toISOString(),
+        student_name: student_name,
+        event_name: event_details.event_name
+      }
     });
 
-  } finally {
-    // Clean up resources
+  } catch (err) {
+    console.error("Error:", err);
+    
+    // Cleanup browser if it exists
     if (browser) {
       try {
         await browser.close();
       } catch (browserError) {
-        console.error("Error closing browser:", browserError);
+        console.error("Browser cleanup error:", browserError);
       }
     }
     
+    // Rollback transaction if it exists
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+        console.log("Transaction rolled back");
+      } catch (rollbackErr) {
+        console.error("Rollback error:", rollbackErr);
+      }
+    }
+    
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Internal server error'
+    });
+    
+  } finally {
     if (client) {
       client.release();
     }
@@ -709,92 +1068,146 @@ app.post('/upload-pdf', async (req, res) => {
 
 
 
+// 1. Get Permission Letter Details
 app.get("/letters/:request_id", async (req, res) => {
   const { request_id } = req.params;
+  
   try {
     const query = `
-      SELECT url 
-      FROM Permission_letters 
-      WHERE request_id = $1
+      SELECT 
+        perm_id,
+        filename, 
+        minio_object_key,
+        created_at
+      FROM permission_letter 
+      WHERE req_id = $1
     `;
     const result = await pool.query(query, [request_id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Letter not found" });
+      return res.status(404).json({ 
+        success: false,
+        error: "Permission letter not found" 
+      });
     }
 
-    return res.json({ url: result.rows[0].url });
+    // Generate MinIO presigned URL for file access
+    const { filename, minio_object_key } = result.rows[0];
+    const bucketName = 'pdf-documents';
+    
+    // Generate temporary URL (valid for 1 hour)
+    const fileUrl = await minioClient.presignedGetObject(bucketName, minio_object_key, 60 * 60);
+
+    return res.json({ 
+      success: true,
+      data: {
+        ...result.rows[0],
+        download_url: fileUrl
+      }
+    });
+
   } catch (err) {
-    console.error("Error fetching letter:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error fetching permission letter:", err);
+    return res.status(500).json({ 
+      success: false,
+      error: "Internal Server Error" 
+    });
   }
 });
 
-/**
- * 2. Accept / Reject Letter → Update Permission_letter_status
- */
+// 2. Update Request Status (Approve/Reject Letter)
 app.post("/letters/:request_id/status", async (req, res) => {
   const { request_id } = req.params;
-  const { status } = req.body; // should be "accepted" or "rejected"
+  const { status, current_stage, admin_id } = req.body;
 
   try {
-    if (!["accepted", "rejected"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
+    // Updated valid statuses for new request table
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ 
+        success: false,
+        error: "Invalid status. Must be 'approved' or 'rejected'" 
+      });
     }
 
     const query = `
-      UPDATE Request 
-      SET Permission_letter_status = $1 
-      WHERE request_id = $2
-      RETURNING *
+      UPDATE request 
+      SET 
+        status = $1,
+        current_stage = COALESCE($2, current_stage),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE request_id = $3
+      RETURNING request_id, status, current_stage, updated_at
     `;
-    const result = await pool.query(query, [status, request_id]);
+    
+    const result = await pool.query(query, [status, current_stage, request_id]);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Request not found" });
+      return res.status(404).json({ 
+        success: false,
+        error: "Request not found" 
+      });
     }
 
     return res.json({
-      message: `Letter ${status}`,
-      updated: result.rows[0],
+      success: true,
+      message: `Permission letter ${status}`,
+      data: result.rows[0]
     });
+
   } catch (err) {
-    console.error("Error updating status:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error updating request status:", err);
+    return res.status(500).json({ 
+      success: false,
+      error: "Internal Server Error" 
+    });
   }
 });
 
-/**
- * 3. List Pending Letters → Fetch requests with status = pending
- */
+// 3. Get Pending Permission Letters
 app.get("/letters/pending", async (req, res) => {
   try {
     const query = `
-      SELECT r.request_id, s.name AS student_name, e.event_name, p.url 
-      FROM Request r
-      JOIN Student s ON r.Student_id = s.Student_id
-      JOIN Event e ON r.event_id = e.event_id
-      LEFT JOIN Permission_letters p ON r.request_id = p.request_id
-      WHERE r.Permission_letter_status = 'pending'
+      SELECT 
+        r.request_id,
+        r.status,
+        r.current_stage,
+        r.submitted_at,
+        s.name AS student_name,
+        s.roll_number,
+        s.email,
+        e.event_name,
+        e.event_type,
+        e.start_date,
+        e.end_date,
+        pl.perm_id,
+        pl.filename,
+        pl.minio_object_key,
+        pl.created_at as letter_uploaded_at
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN event e ON r.event_id = e.event_id
+      INNER JOIN permission_letter pl ON r.request_id = pl.req_id
+      WHERE r.status = 'pending'
+      ORDER BY r.submitted_at ASC
     `;
+    
     const result = await pool.query(query);
 
-    return res.json(result.rows);
+    return res.json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length
+    });
+
   } catch (err) {
     console.error("Error fetching pending letters:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ 
+      success: false,
+      error: "Internal Server Error" 
+    });
   }
 });
 
-app.get("/students", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM student ORDER BY name ASC");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching students:", err);
-    res.status(500).json({ error: "Database error" });
-  }
-});
 
 // ✅ Search students by name / rollNumber / year
 
@@ -808,38 +1221,82 @@ app.get("/student/:id/certificates", async (req, res) => {
         s.student_id,
         s.name,
         s.roll_number,
+        e.event_id,
         e.event_name,
-        COUNT(c.certificate_id) AS certificate_count,
-        ARRAY_AGG(c.certificate_id) AS certificates
+        e.event_type,
+        e.end_date,
+        c.certificate_id,
+        c.filename,
+        c.minio_object_key,
+        c.created_at as certificate_uploaded_at,
+        r.request_id,
+        r.status as request_status
       FROM student s
-      LEFT JOIN certificates c ON s.student_id = c.student_id
-      LEFT JOIN event e ON c.event_id = e.event_id
+      INNER JOIN request r ON s.student_id = r.student_id
+      LEFT JOIN certificate c ON r.request_id = c.req_id
+      INNER JOIN event e ON r.event_id = e.event_id
       WHERE s.student_id = $1
-      GROUP BY s.student_id, s.name, s.roll_number, e.event_name
-      ORDER BY e.event_name;
+        AND r.status = 'approved'
+        AND c.certificate_id IS NOT NULL
+      ORDER BY e.end_date DESC, c.created_at DESC;
     `;
 
     const { rows } = await pool.query(query, [studentId]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "No certificates found for this student" });
+      return res.status(404).json({ 
+        success: false,
+        message: "No certificates found for this student" 
+      });
     }
 
-    res.json({
-      student_id: rows[0].student_id,
-      name: rows[0].name,
-      roll_number: rows[0].roll_number,
-      events: rows.map(r => ({
-        event_name: r.event_name,
-        certificate_count: r.certificate_count,
-        certificates: r.certificates
-      }))
+    // Group certificates by event
+    const eventsMap = new Map();
+    
+    rows.forEach(row => {
+      if (!eventsMap.has(row.event_id)) {
+        eventsMap.set(row.event_id, {
+          event_id: row.event_id,
+          event_name: row.event_name,
+          event_type: row.event_type,
+          end_date: row.end_date,
+          certificates: []
+        });
+      }
+      
+      eventsMap.get(row.event_id).certificates.push({
+        certificate_id: row.certificate_id,
+        filename: row.filename,
+        minio_object_key: row.minio_object_key,
+        uploaded_at: row.certificate_uploaded_at,
+        request_id: row.request_id
+      });
     });
+
+    const events = Array.from(eventsMap.values());
+
+    return res.json({
+      success: true,
+      student: {
+        student_id: rows[0].student_id,
+        name: rows[0].name,
+        roll_number: rows[0].roll_number
+      },
+      events: events,
+      total_certificates: rows.length,
+      total_events: events.length
+    });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error fetching student certificates:', err);
+    return res.status(500).json({ 
+      success: false,
+      error: "Internal Server Error",
+      message: "Failed to fetch certificates"
+    });
   }
 });
+
 
 
 
@@ -862,7 +1319,7 @@ app.get("/students/:uid", async (req, res) => {
 });
 
 
-app.post("/check-uid", async (req, res) => {
+app.post("/api/check-user", async (req, res) => {
   try {
     const { uid, isstudent } = req.body;
 
@@ -882,335 +1339,672 @@ app.post("/check-uid", async (req, res) => {
     
   } catch (err) {
     console.error("❌ Error checking UID:", err);
-    res.status(500).json({ exists: false, error: "Database error" });
+    return res.status(500).json({ exists: false });
   }
 });
 
-app.get("/request",async (req,res)=>{
-  try{
-    const {status } = req.query;
+app.get("/api/requests", async (req, res) => {
+  try {
+    const { status, uid, limit = 50, offset = 0 } = req.query;
+    
     if (!status) {
       return res.status(400).json({ 
+        success: false,
         error: 'Status query parameter is required',
-        message: 'Please provide status as: pending, accepted, or rejected'
+        message: 'Please provide status as: pending, approved, or rejected'
       });
     }
 
-    // Validate status values
-    const validStatuses = ['pending', 'accepted', 'rejected'];
+    if (!uid) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Firebase UID is required',
+        message: 'Please provide uid parameter'
+      });
+    }
+
+    const validStatuses = ['pending', 'approved', 'rejected'];
     if (!validStatuses.includes(status.toLowerCase())) {
       return res.status(400).json({ 
+        success: false,
         error: 'Invalid status value',
-        message: 'Status must be one of: pending, accepted, rejected'
+        message: 'Status must be one of: pending, approved, rejected'
       });
     }
 
-    const query = `
-    SELECT 
-    r.request_id,
-    s.student_id,
-       s.name,
-       e.event_name,
-       e.event_type,
-       s.roll_number,
-       r.permission_letter_status
-FROM request r
-INNER JOIN student s ON r.student_id = s.student_id
-INNER JOIN event e ON e.event_id = r.event_id
-WHERE r.permission_letter_status = $1; 
-
+    // Base query with joins
+    let query = `
+      SELECT 
+        r.request_id,
+        r.student_id,
+        r.submitted_at,
+        r.status as request_status,
+        r.current_stage,
+        s.name AS student_name,
+        s.roll_number,
+        c.class_name,
+        c.section,
+        e.event_name,
+        e.event_type,
+        e.event_level,
+        e.organizer,
+        e.start_date,
+        e.end_date
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN class c ON s.class_id = c.class_id
+      INNER JOIN admin a ON c.class_teacher_id = a.admin_id
+      INNER JOIN event e ON r.event_id = e.event_id
+      WHERE a.firebase_uid = $1
     `;
 
-    const result = await pool.query(query, [status.toLowerCase()]);
+    const params = [uid];
+    let paramCount = 1;
 
-    return res.status(200).json(result.rows);
-
-  }
-  catch (error) {
-    console.error('Error fetching requests:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to fetch requests'
-  })}
-});
-
-app.get("/admin/notifications" , async (req , res)=>{
-  try{
-    const query = `
-    SELECT 
-    s.name, s.roll_number , r.permission_letter_status
-    from request r
-    INNER JOIN student s ON r.student_id = s.student_id
-    WHERE r.permission_letter_status = "pending";
-    `;
-
-    const result = await pool.query(query);
-    return res.status(200).json(result.rows);
-
-  }
-  catch{
-    console.error('Error fetching requests:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to fetch requests'
-  });
-  }
-});
-// ✅ Add this endpoint if it's missing
-app.put("/request/:id/status", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const validStatuses = ['pending', 'accepted', 'rejected'];
-    if (!validStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({ 
-        error: 'Invalid status value',
-        message: 'Status must be one of: pending, accepted, rejected'
-      });
+    // Add status-specific conditions
+    if (status.toLowerCase() === 'pending') {
+      // For pending: status = 'pending' AND current_stage = 'tutor'
+      paramCount++;
+      query += ` AND r.status = $${paramCount} AND r.current_stage = $${paramCount + 1}`;
+      params.push('pending', 'tutor');
+      paramCount++;
+    } 
+    else if (status.toLowerCase() === 'approved') {
+      // For approved: (status = 'pending' AND current_stage = 'super_admin') OR (status = 'approved' AND current_stage = 'completed')
+      query += ` AND (
+        (r.status = 'pending' AND r.current_stage = 'super_admin') OR 
+        (r.status = 'approved' AND r.current_stage = 'completed')
+      )`;
+    } 
+    else if (status.toLowerCase() === 'rejected') {
+      // For rejected: status = 'rejected' AND current_stage = 'completed'
+      query += ` AND r.status = 'rejected' AND r.current_stage = 'completed'`;
     }
 
-    const query = `
-      UPDATE request 
-      SET permission_letter_status = $1 
-      WHERE request_id = $2 
-      RETURNING *
+    // Add ordering and pagination
+    query += ` ORDER BY r.submitted_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    console.log('Final Query:', query);
+    console.log('Parameters:', params);
+
+    const result = await pool.query(query, params);
+
+    // Get total count for pagination
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN class c ON s.class_id = c.class_id
+      INNER JOIN admin a ON c.class_teacher_id = a.admin_id
+      WHERE a.firebase_uid = $1
     `;
 
-    const result = await pool.query(query, [status.toLowerCase(), id]);
+    const countParams = [uid];
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Request not found'
-      });
+    // Add same status conditions for count
+    if (status.toLowerCase() === 'pending') {
+      countQuery += ` AND r.status = $2 AND r.current_stage = $3`;
+      countParams.push('pending', 'tutor');
+    } 
+    else if (status.toLowerCase() === 'approved') {
+      countQuery += ` AND (
+        (r.status = 'pending' AND r.current_stage = 'super_admin') OR 
+        (r.status = 'approved' AND r.current_stage = 'completed')
+      )`;
+    } 
+    else if (status.toLowerCase() === 'rejected') {
+      countQuery += ` AND r.status = 'rejected' AND r.current_stage = 'completed'`;
     }
 
-    return res.status(200).json(result.rows[0]);
+    const countResult = await pool.query(countQuery, countParams);
+    const totalCount = parseInt(countResult.rows[0].total);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+      total: totalCount,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: result.rows.length === parseInt(limit),
+        totalPages: Math.ceil(totalCount / parseInt(limit))
+      },
+      filters: {
+        status: status.toLowerCase(),
+        uid: uid
+      }
+    });
 
   } catch (error) {
-    console.error('Error updating request:', error);
+    console.error('Error fetching requests:', error);
     return res.status(500).json({
-      error: 'Internal server error'
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to fetch requests'
     });
   }
 });
 
 
-app.get("/requeststudent/:uid", async (req,res)=>{
-   try{
+// ✅ Add this endpoint if it's missing
+app.put("/request/:id/status", async (req, res) => {
+  let client;
+  
+  try {
+    client = await pool.connect();
+    
+    const { id } = req.params;
+    const { status, current_stage, admin_id } = req.body;
 
-    const {status } = req.query;
-    const {uid} = req.params;
-    if (!status) {
+    // Updated valid statuses based on your request table
+    const validStatuses = ['pending', 'approved', 'rejected'];
+    if (!validStatuses.includes(status.toLowerCase())) {
       return res.status(400).json({ 
-        error: 'Status query parameter is required',
-        message: 'Please provide status as: pending, accepted, or rejected'
+        success: false,
+        error: 'Invalid status value',
+        message: 'Status must be one of: pending, approved, rejected'
       });
     }
 
-    // Validate status values
-    const validStatuses = ['pending', 'accepted', 'rejected'];
+    // Valid stages for workflow progression
+    const validStages = ['tutor', 'super_admin', 'completed'];
+    if (current_stage && !validStages.includes(current_stage.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid stage value',
+        message: 'Stage must be one of: tutor, super_admin, completed'
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // Check if request exists
+    const checkQuery = `SELECT * FROM request WHERE request_id = $1`;
+    const checkResult = await client.query(checkQuery, [id]);
+
+    if (checkResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: 'Request not found'
+      });
+    }
+
+    // Update request with new status and stage
+    const updateQuery = `
+      UPDATE request 
+      SET 
+        status = $1,
+        current_stage = COALESCE($2, current_stage),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE request_id = $3 
+      RETURNING request_id, student_id, event_id, status, current_stage, updated_at
+    `;
+
+    const result = await pool.query(updateQuery, [
+      status.toLowerCase(), 
+      current_stage?.toLowerCase() || null, 
+      id
+    ]);
+
+    // Log the status change (optional - for audit trail)
+    if (admin_id) {
+      const logQuery = `
+        INSERT INTO request_status_log (request_id, admin_id, old_status, new_status, changed_at)
+        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      `;
+      
+      const oldStatus = checkResult.rows[0].status;
+      await client.query(logQuery, [id, admin_id, oldStatus, status.toLowerCase()]);
+    }
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      success: true,
+      message: `Request ${status.toLowerCase()} successfully`,
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    if (client) {
+      await client.query('ROLLBACK');
+    }
+    console.error('Error updating request status:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to update request status'
+    });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+
+
+app.get("/requeststudent/:uid", async (req, res) => {
+  try {
+    const { status } = req.query;
+    const { uid } = req.params;
+
+    if (!status) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Status query parameter is required',
+        message: 'Please provide status as: pending, approved, or rejected'
+      });
+    }
+
+    // Updated valid statuses based on your new request table
+    const validStatuses = ['pending', 'approved', 'rejected'];
     if (!validStatuses.includes(status.toLowerCase())) {
       return res.status(400).json({ 
+        success: false,
         error: 'Invalid status value',
-        message: 'Status must be one of: pending, accepted, rejected'
+        message: 'Status must be one of: pending, approved, rejected'
       });
     }
 
     const query = `
     SELECT 
-    e.event_id,
+    e.event_id,              
     e.event_name,
+    e.event_type,
     e.end_date,
-    e.organiser,
-    r.permission_letter_status
-FROM student s
-INNER JOIN request r ON s.student_id = r.student_id
-INNER JOIN event e ON r.event_id = e.event_id
-WHERE s.firebase_uid = $1
-  AND r.permission_letter_status = $2;
+    e.organizer,
+    r.status as permission_letter_status, 
+    r.current_stage,
+    r.submitted_at,
+    r.updated_at,
+    r.created_at as request_created_at
+  FROM student s
+  INNER JOIN request r ON s.student_id = r.student_id
+  INNER JOIN event e ON r.event_id = e.event_id
+  LEFT JOIN permission_letter pl ON r.request_id = pl.req_id  
+  WHERE s.firebase_uid = $1
+    AND r.status = $2
+  ORDER BY r.created_at DESC;
+`;
 
-    `;
 
-    const result = await pool.query(query, [uid,status.toLowerCase()]);
+    const result = await pool.query(query, [uid, status.toLowerCase()]);
 
-    return res.status(200).json(result.rows);
-   }
-   catch(err){
-    console.log("Unable to fetch:" , err);
-    return res.status(500).json("Unable to fetch");
-   }
-    
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+      status_filter: status.toLowerCase()
+    });
+
+  } catch (err) {
+    console.error("Unable to fetch student requests:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Unable to fetch student requests",
+      message: "Database error occurred"
+    });
+  }
 });
 
-app.get("/certificateshow/:uid/:filter", async (req,res)=>{
-  try{
-    const {uid , filter} = req.params;
-    query = `
-    SELECT 
+
+app.get("/certificateshow/:uid/:filter", async (req, res) => {
+  try {
+    const { uid, filter } = req.params;
     
+    // Convert filter to boolean (assuming "true" or "false" string values)
+    const certificateUploaded = filter ;
+    
+    const query = `
+  SELECT 
+    r.request_id,
     e.event_id,
     e.event_name,
     e.event_type,
-    e.end_date
-FROM student s
-INNER JOIN request r 
+    e.end_date,
+    e.organizer,
+    e.start_date,
+    c.filename,
+    c.minio_object_key,
+    c.created_at as certificate_uploaded_at,
+    r.status as request_status,
+    r.current_stage,
+    e.permission_required,
+    'with_request' as record_type
+  FROM student s
+  INNER JOIN request r 
     ON s.student_id = r.student_id
-INNER JOIN event e 
+  INNER JOIN event e 
     ON r.event_id = e.event_id
-WHERE s.firebase_uid = $1
-  AND r.permission_letter_status = 'accepted'
-  AND e.certificate_upload = $2;
+  LEFT JOIN certificate c
+    ON r.request_id = c.req_id
+  WHERE s.firebase_uid = $1
+    AND (
+      (e.permission_required = true AND r.status = 'approved') OR
+      (e.permission_required = false)
+    )
+    AND e.certificate_upload = $2
+    
+  ORDER BY e.end_date DESC;
+`;
 
+
+    const result = await pool.query(query, [uid, certificateUploaded]);
+    
+    const qu = `
+    select event_name 
+    event_type,
+    end_date,
+    organizer,
+    from event 
+    where certificate_upload = $1 and permission_required = false
+    order by end_date desc
     `;
-
-    const result = await pool.query(query, [uid,filter]);
-    console.log(result.rows);
-    return res.status(200).json(result.rows);
+    console.log(`Found ${result.rows.length} certificates for user ${uid}`);
+    
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+    });
+    
+  } catch (err) {
+    console.error("Certificate show error:", err);
+    return res.status(500).json({ 
+      success: false,
+      error: "Database error" 
+    });
   }
-  catch(err){
-    console.log("ERROR");
-    return res.status(500).json({ error: "Database error" });
-  }
-
-
-
-  });
-
-  app.post("/upload-certificate/:expandedId", upload.single("certificate"),async (req, res) => {
-  const client = await pool.connect();
+});
+app.post("/upload-certificate/:eventId", upload.single("certificate"), async (req, res) => {
+  let client;
+  
   try {
+    client = await pool.connect();
+    
     const BUCKET = "certificate";
-    const event_id = req.params.expandedId;
+    const eventId = req.params.eventId;
+    
+    console.log('📤 Certificate upload for event:', eventId);
 
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
+    const originalFilename = req.file.originalname;
     const pdfBuffer = req.file.buffer;
 
+    // Check if bucket exists
     const exists = await minioClient.bucketExists(BUCKET);
     if (!exists) {
       await minioClient.makeBucket(BUCKET, "us-east-1");
     }
 
-    const objectName = `certificate-${Date.now()}.pdf`;
+    // Create structured object key
+    const timestamp = Date.now();
+    const filename = `certificate-${eventId}-${timestamp}.pdf`;
+    const minio_object_key = `certificates/events/${eventId}/${filename}`;
 
-    await minioClient.putObject(BUCKET, objectName, pdfBuffer, pdfBuffer.length, {
+    // Upload to MinIO
+    await minioClient.putObject(BUCKET, minio_object_key, pdfBuffer, pdfBuffer.length, {
       "Content-Type": "application/pdf",
+      "X-Amz-Meta-Event-Id": eventId.toString(),
+      "X-Amz-Meta-Upload-Date": new Date().toISOString(),
+      "X-Amz-Meta-Original-Filename": originalFilename
     });
-
-    const url = await minioClient.presignedGetObject(BUCKET, objectName, 24 * 60 * 60);
 
     await client.query("BEGIN");
 
-    await client.query(
-      `UPDATE event SET certificate_upload = true WHERE event_id = $1`,
-      [event_id]
+    // Check if this is a request_id or event_id
+    const checkRequest = await client.query(
+      `SELECT request_id, event_id FROM request WHERE request_id = $1`,
+      [eventId]
     );
 
+    let certificateInserts = 0;
+    let actualEventId = eventId; // Track the actual event_id for the update
+
+    if (checkRequest.rows.length > 0) {
+      // This is a request_id - insert one certificate record
+      actualEventId = checkRequest.rows[0].event_id; // Get the actual event_id
+      
+      const insertQuery = `
+        INSERT INTO certificate (req_id, filename, minio_object_key, created_at)
+        VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        RETURNING certificate_id
+      `;
+      
+      const result = await client.query(insertQuery, [eventId, originalFilename, minio_object_key]);
+      certificateInserts = 1;
+      
+      console.log('✅ Certificate inserted for request_id:', eventId);
+      
+    } else {
+      // This is an event_id
+      const eventCheck = await client.query(
+        `SELECT event_id, permission_required FROM event WHERE event_id = $1`,
+        [eventId]
+      );
+
+      if (eventCheck.rows.length === 0) {
+        throw new Error('Event not found');
+      }
+
+      const event = eventCheck.rows[0];
+      actualEventId = event.event_id;
+
+      if (!event.permission_required) {
+        // For no-permission events, create certificates for all approved requests
+        const insertQuery = `
+          INSERT INTO certificate (req_id, filename, minio_object_key, created_at)
+          SELECT r.request_id, $2, $3, CURRENT_TIMESTAMP
+          FROM request r
+          WHERE r.event_id = $1 AND r.status = 'approved'
+          RETURNING certificate_id
+        `;
+        
+        const result = await client.query(insertQuery, [eventId, originalFilename, minio_object_key]);
+        certificateInserts = result.rowCount;
+        
+        console.log('✅ Certificates inserted for event_id:', eventId, 'Count:', certificateInserts);
+      } else {
+        // This should be a request_id for permission-required events
+        throw new Error('Permission-required events need a request_id, not event_id');
+      }
+    }
+
+    // ✅ UPDATE: Set certificate_upload = true to indicate certificate has been uploaded
     await client.query(
-      `INSERT INTO certificates (request_id, file_key, url)
-SELECT request_id, $2, $3
-FROM request
-WHERE event_id = $1;
-`,
-      [event_id, objectName, url]
+      `UPDATE event 
+       SET certificate_upload = true, updated_at = CURRENT_TIMESTAMP 
+       WHERE event_id = $1`,
+      [actualEventId]
     );
 
     await client.query("COMMIT");
-    console.log("ALL ok");
+    
+    console.log('🎉 Upload complete! Event updated and certificates created:', certificateInserts);
+    
     return res.json({
-      message: "✅ Certificate uploaded & recorded",
-      file_key: objectName,
-      url,
+      success: true,
+      message: "Certificate uploaded successfully",
+      data: {
+        event_id: actualEventId,
+        filename: originalFilename,
+        minio_object_key: minio_object_key,
+        certificates_created: certificateInserts,
+        bucket_name: BUCKET
+      }
     });
+
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("Upload error:", err);
-    return res.status(500).json({ error: "Server error during upload" });
+    if (client) {
+      await client.query("ROLLBACK");
+    }
+    console.error("Certificate upload error:", err);
+    return res.status(500).json({ 
+      error: "Server error during certificate upload",
+      details: err.message 
+    });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
-app.get("/superadmin/notifications",async (req,res)=>{
-  try{
-  query = `
-  SELECT s.name,c.class,e.event_type,e.organizer
-  from request r
-  inner join student s on r.student_id = s.student_id
-  inner join event e on e.event_id = r.event_id
-  inner join class c on c.class_id = r.class_id
-  where r.current_stage = "superadmin"; 
-  `;
-  const result = await pool.query(query);
-  return res.status(200).json(result.rows);
-}
-  catch{
-    console.error('Error fetching requests:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to fetch requests'
-  });
-  }
-});
 
-app.get("/superrequest",async (req,res)=>{
-  try{
-     
-    const {status } = req.query;
-    if (!status) {
-      return res.status(400).json({ 
-        error: 'Status query parameter is required',
-        message: 'Please provide status as: pending, accepted, or rejected'
-      });
-    }
 
-    // Validate status values
-    const validStatuses = ['pending', 'accepted', 'rejected'];
-    if (!validStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({ 
-        error: 'Invalid status value',
-        message: 'Status must be one of: pending, accepted, rejected'
-      });
-    }
+app.get("/superadmin/notifications", async (req, res) => {
+  try {
+    const { limit = 10, offset = 0 } = req.query;
 
     const query = `
-    SELECT 
-       s.name,
-       s.roll_number,
-       e.event_name,
-       e.event_type
-       FROM request r
-       INNER JOIN student s ON r.student_id = s.student_id
-       INNER JOIN event e ON e.event_id = r.event_id
-       WHERE r.permission_letter_status = $1 and r.curr_stage = "superadmin"
-       ORDER BY e.evnt_name,s.name; 
-
+      SELECT 
+        r.request_id,
+        r.submitted_at,
+        s.name AS student_name,
+        s.roll_number,
+        c.class_name,
+        e.event_name,
+        e.event_type,
+        e.event_level,
+        e.organizer,
+        e.start_date,
+        e.end_date
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN class c ON s.class_id = c.class_id
+      INNER JOIN event e ON r.event_id = e.event_id
+      LEFT JOIN permission_letter pl ON r.request_id = pl.req_id
+      WHERE r.current_stage = 'super_admin' 
+        AND r.status = 'pending'
+      ORDER BY r.submitted_at ASC
+      LIMIT $1 OFFSET $2
     `;
 
-    const result = await pool.query(query, [status.toLowerCase()]);
+    const result = await pool.query(query, [parseInt(limit), parseInt(offset)]);
 
-    return res.status(200).json(result.rows);
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM request r
+      WHERE r.current_stage = 'super_admin' 
+        AND r.status = 'pending'
+    `;
 
-  }
-  catch (error) {
-    console.error('Error fetching requests:', error);
+    const countResult = await pool.query(countQuery);
+    const totalCount = parseInt(countResult.rows[0].total);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        notifications: result.rows,
+        total: totalCount,
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching superadmin notifications:', error);
+    
     return res.status(500).json({
+      success: false,
       error: 'Internal server error',
-      message: 'Failed to fetch requests'
-  })}
+      message: 'Failed to fetch notifications'
+    });
+  }
 });
 
-app.put("/superrequests/update",async (req,res)=>{
+app.get("/api/superrequest", async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    if (!status) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Status query parameter is required',
+        message: 'Please provide status as: pending, approved, or rejected'
+      });
+    }
+
+    const validStatuses = ['pending', 'approved', 'rejected'];
+    if (!validStatuses.includes(status.toLowerCase())) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid status value',
+        message: 'Status must be one of: pending, approved, rejected'
+      });
+    }
+
+    let query = `
+      SELECT 
+        r.request_id,
+        s.name,
+        s.roll_number,
+        e.event_name,
+        e.event_type,
+        e.organizer,
+        e.start_date,
+        e.end_date,
+        r.status as permission_letter_status,
+        r.current_stage,
+        r.approved_by,
+        r.rejected_by,
+        r.created_at,
+        r.updated_at
+      FROM request r
+      INNER JOIN student s ON r.student_id = s.student_id
+      INNER JOIN event e ON e.event_id = r.event_id
+    `;
+
+    let params = [];
+
+    if (status.toLowerCase() === 'pending') {
+      query += ` WHERE r.status = 'pending' AND r.current_stage = 'super_admin'`;
+    } else if (status.toLowerCase() === 'approved') {
+      query += ` WHERE r.status = 'approved' AND r.approved_by = 'HOD'`;
+    } else if (status.toLowerCase() === 'rejected') {
+      query += ` WHERE r.status = 'rejected' AND r.rejected_by = 'HOD'`;
+    }
+
+    query += ` ORDER BY r.created_at DESC`;
+
+    console.log('Query:', query);
+
+    const result = await pool.query(query, params);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching requests:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to fetch requests'
+    });
+  }
+});
+
+
+// REMOVE the single endpoint and keep only this bulk endpoint
+app.put("/api/superrequests/update", async (req, res) => {
   let { requestIds, status } = req.body;
+  let client;
   
   try {
-    // Input validation
-    const validStatuses = ['pending', 'accepted', 'rejected'];
+    const validStatuses = ['pending', 'approved', 'rejected'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid status' 
+      });
     }
 
     // Convert single ID to array for uniform processing
@@ -1218,86 +2012,113 @@ app.put("/superrequests/update",async (req,res)=>{
       requestIds = [requestIds];
     }
     
-    if (requestIds.length === 0) {
-      return res.status(400).json({ error: 'No request IDs provided' });
+    const cleanRequestIds = requestIds.filter(id => id !== null && id !== undefined && id !== '');
+    
+    if (cleanRequestIds.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'No valid request IDs provided' 
+      });
     }
 
-    // Validate all IDs are numbers
-    const numericIds = requestIds.map(id => {
+    const numericIds = [];
+    for (const id of cleanRequestIds) {
       const numId = parseInt(id);
       if (isNaN(numId)) {
-        throw new Error(`Invalid request ID: ${id}`);
+        return res.status(400).json({ 
+          success: false,
+          error: `Invalid request ID: ${id}` 
+        });
       }
-      return numId;
-    });
-
-    
-    try {
-      await pool.query('BEGIN');
-      
-      // Optimized bulk update using PostgreSQL ANY() operator
-      const updateQuery = `
-        UPDATE request 
-        SET 
-          permission_letter_status = $1,
-          curr_stage = CASE 
-            WHEN $1 IN ('accepted', 'rejected') THEN 'completed'
-            ELSE curr_stage
-          END,
-          updated_at = NOW()
-        WHERE request_id = ANY($2::int[]) 
-          AND curr_stage = 'superadmin'
-          AND permission_letter_status = 'pending'
-        RETURNING request_id, permission_letter_status, curr_stage, updated_at
-      `;
-      
-      const result = await pool.query(updateQuery, [status, numericIds]);
-      await pool.query('COMMIT');
-      
-      const updated = result.rows;
-      const updatedIds = updated.map(row => row.request_id);
-      const failedIds = numericIds.filter(id => !updatedIds.includes(id));
-      
-      console.log(`Bulk update completed: ${updated.length}/${numericIds.length} records updated to ${status}`);
-      
-      return res.json({
-        success: true,
-        updated: updatedIds,
-        failed: failedIds,
-        total_requested: numericIds.length,
-        total_updated: updated.length,
-        message: `${updated.length} request(s) ${status} successfully`,
-        details: updated,
-        operation_type: numericIds.length === 1 ? 'single' : 'bulk',
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (error) {
-      await client.query('ROLLBACK');
-      return res.status(500).json({ 
-      error: 'Update failed', 
-      details: error.message,
-      failed_ids: requestIds || []
-    });
-    } finally {
-      client.release();
+      numericIds.push(numId);
     }
 
+    client = await pool.connect();
+    await client.query('BEGIN');
+    
+    let updateQuery, params;
+    
+    if (status === 'approved') {
+      updateQuery = `
+        UPDATE request 
+        SET 
+          status = $1,
+          current_stage = $2,
+          approved_by = $3,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE request_id = ANY($4::int[]) 
+          AND current_stage = 'super_admin'
+          AND status = 'pending'
+        RETURNING request_id, status, current_stage, approved_by, updated_at
+      `;
+      params = ['approved', 'completed', 'HOD', numericIds];
+    } else if (status === 'rejected') {
+      updateQuery = `
+        UPDATE request 
+        SET 
+          status = $1,
+          current_stage = $2,
+          rejected_by = $3,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE request_id = ANY($4::int[]) 
+          AND current_stage = 'super_admin'
+          AND status = 'pending'
+        RETURNING request_id, status, current_stage, rejected_by, updated_at
+      `;
+      params = ['rejected', 'completed', 'HOD', numericIds];
+    }
+    
+    const result = await client.query(updateQuery, params);
+    await client.query('COMMIT');
+    
+    const updated = result.rows;
+    const updatedIds = updated.map(row => row.request_id);
+    const failedIds = numericIds.filter(id => !updatedIds.includes(id));
+    
+    console.log(`Bulk update completed: ${updated.length}/${numericIds.length} records updated to ${status}`);
+    
+    return res.json({
+      success: true,
+      updated: updatedIds,
+      failed: failedIds,
+      total_requested: numericIds.length,
+      total_updated: updated.length,
+      message: `${updated.length} request(s) ${status} successfully by HOD`,
+      details: updated,
+      operation_type: numericIds.length === 1 ? 'single' : 'bulk',
+      timestamp: new Date().toISOString()
+    });
+
   } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Rollback error:', rollbackError);
+      }
+    }
+    
     console.error('Update operation failed:', error);
     return res.status(500).json({ 
+      success: false,
       error: 'Update failed', 
       details: error.message,
       failed_ids: requestIds || []
     });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
-app.get("/superadmin/getnames" , async(req,res)=>{
+
+
+app.get("/superadmin/getnamesandids" , async(req,res)=>{
   try{
     query = `
-    SELECT name from 
-    admin WHERE role = "admin"
+    SELECT admin_id,name from 
+    admin WHERE role = 'admin'
     `;
     const result = await pool.query(query);
 
@@ -1306,6 +2127,427 @@ app.get("/superadmin/getnames" , async(req,res)=>{
   catch(err){
     return res.status(500).json({
       message : `no teachers found`
+    });
+  }
+});
+app.put("/superadmin/classassignment", async (req, res) => {
+  try {
+    const { schedules } = req.body; 
+    
+    if (!schedules || !Array.isArray(schedules)) {
+      return res.status(400).json({
+        error: 'Invalid schedules data format'
+      });
+    }
+
+    console.log('Received schedules:', schedules);
+
+    for (const schedule of schedules) {
+      const { teacherId, className, sectionName } = schedule;
+      
+      console.log(`Processing: Teacher ${teacherId} -> Class ${className} Section ${sectionName}`);
+
+      // First, find the class_id and current teacher for the class
+      const findClassQuery = `
+        SELECT class_id, class_teacher_id 
+        FROM class 
+        WHERE class_name = $1 AND section = $2
+      `;
+      
+      const classResult = await pool.query(findClassQuery, [className, sectionName]);
+      
+      if (classResult.rows.length === 0) {
+        console.error(`No class found for Class ${className} Section ${sectionName}`);
+        continue; // Skip this assignment
+      }
+      
+      const classId = classResult.rows[0].class_id;
+      const currentTeacherId = classResult.rows[0].class_teacher_id;
+      
+      console.log(`Found class_id: ${classId} for Class ${className} Section ${sectionName}`);
+      console.log(`Current teacher_id: ${currentTeacherId}`);
+
+      // If there's an existing teacher, change their role back to admin
+      if (currentTeacherId !== null) {
+        const demoteTeacherQuery = 'UPDATE admin SET role = $1 WHERE admin_id = $2';
+        await pool.query(demoteTeacherQuery, ['admin', currentTeacherId]);
+        console.log(`Changed admin ${currentTeacherId} role back to admin`);
+      }
+
+      // Update the new teacher's role to tutor
+      const roleUpdateQuery = 'UPDATE admin SET role = $1 WHERE admin_id = $2';
+      await pool.query(roleUpdateQuery, ['tutor', teacherId]);
+      console.log(`Updated admin ${teacherId} role to tutor`);
+
+      // Assign new teacher to class
+      const classUpdateQuery = 'UPDATE class SET class_teacher_id = $1 WHERE class_id = $2';
+      const updateResult = await pool.query(classUpdateQuery, [teacherId, classId]);
+      console.log(`Updated class_id ${classId} with teacher_id ${teacherId}, affected rows: ${updateResult.rowCount}`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully assigned tutors to classes`
+    });
+
+  } catch (err) {
+    console.error('Assignment error:', err);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to assign tutors",
+      details: err.message
+    });
+  }
+});
+
+
+app.post("/superadmin/create",async (req,res)=>{
+  const { name,uid,email,role } = req.body;
+  try{
+    const query = `
+    INSERT INTO admin (firebase_uid,name,email,role,created_at,updated_at)
+    VALUES ($1,$2,$3,$4,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+    RETURNING admin_id,name,email,role,created_at
+    `;
+    const result = await pool.query(query,[uid,name,email,role]);
+    return res.status(200).json({
+      message : `Admin created successfully`,
+      data : result.rows[0]
+    });
+  }
+  catch(err){
+    console.error('Error creating admin:', err);
+    return res.status(500).json({
+      error: "Failed to create admin",
+      details: err.message
+    });
+  }
+});
+
+app.get("/superadmin/getassignments",async (req,res)=>{
+  try{
+    const query = `
+    SELECT c.class_name,c.section,a.admin_id,a.name  from 
+    class c
+    LEFT JOIN admin a ON c.class_teacher_id = a.admin_id
+    WHERE a.role = 'tutor'
+    `;
+    const result = await pool.query(query);
+
+    return res.status(200).json(result.rows);
+  }
+  catch(err){
+    return res.status(500).json({
+      message : `no assignments found`
+    });
+  }
+});
+app.get('/get-certificate/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    console.log(`🏆 Certificate request for ID: ${requestId}`);
+    
+    const query = `
+      SELECT 
+        c.filename, 
+        c.minio_object_key,
+        c.created_at,
+        r.student_id,
+        r.event_id
+      FROM certificate c
+      JOIN request r ON c.req_id = r.request_id
+      WHERE c.req_id = $1
+      ORDER BY c.created_at DESC
+      LIMIT 1
+    `;
+    
+    console.log(`🔍 Executing query with ID: ${requestId}`);
+    
+    const result = await pool.query(query, [requestId]);
+    
+    console.log(`📊 Query result: ${result.rows.length} rows found`);
+    
+    if (result.rows.length === 0) {
+      console.log(`❌ No certificate found for request ID: ${requestId}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Certificate not found',
+        debug: { requestId, timestamp: new Date().toISOString() }
+      });
+    }
+    
+    const { filename, minio_object_key } = result.rows[0];
+    
+    console.log(`📄 Found certificate: ${filename}`);
+    console.log(`🔑 MinIO key: ${minio_object_key}`);
+    
+    // Generate presigned URL
+    const presignedUrl = await minioClient.presignedGetObject(
+      'certificate',
+      minio_object_key,
+      2 * 60 * 60
+    );
+    
+    console.log(`✅ Generated presigned URL successfully`);
+    console.log(`🔗 URL: ${presignedUrl}`);
+    res.json({
+      success: true,
+      url: presignedUrl,
+      filename: filename
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in get-certificate:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      debug: error.message
+    });
+  }
+});
+
+
+app.get('/get-permission-letter/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    const query = `SELECT filename, minio_object_key FROM permission_letter WHERE req_id = $1`;
+    const result = await pool.query(query, [requestId]);
+    console.log(`Fetched permission letter for request ID: ${requestId}`);
+    console.log(`Query result rows: ${result.rows.length}`);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+    
+    const { filename, minio_object_key } = result.rows[0];
+    
+    // Generate presigned URL with download headers
+    const downloadUrl = await minioClient.presignedGetObject(
+      'permissionletters',
+      minio_object_key,
+      60 * 60, // 1 hour
+      {
+        'response-content-disposition': `attachment; filename="${filename}"`
+      }
+    );
+    console.log(`Generated download URL for ${filename}`);
+    console.log(`Download URL: ${downloadUrl}`);
+    
+    res.json({
+      success: true,
+      download_url: downloadUrl,
+      filename: filename
+    });
+    
+  } catch (error) {
+    console.error('❌ Download error:', error);
+    res.status(500).json({ success: false, error: 'Download failed' });
+  }
+});
+
+app.get("/superadmin/dashboard-stats", async (req, res) => {
+  try {
+    const { timeframe } = req.query; // 'month' or 'lifetime' (default)
+    
+    // Set date filter based on timeframe
+    let dateFilter = '';
+    if (timeframe === 'month') {
+      dateFilter = `AND r.created_at >= CURRENT_DATE - INTERVAL '1 month'`;
+    }
+    // For 'lifetime' or no timeframe, no date filter is applied
+
+    // Get statistics with your specific conditions and timeframe
+    const statsQuery = `
+      SELECT 
+        COUNT(CASE WHEN r.status = 'pending' AND r.current_stage = 'super_admin' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN r.status = 'rejected' AND r.rejected_by = 'super_admin' THEN 1 END) as rejected_count,
+        COUNT(CASE WHEN r.status = 'approved' THEN 1 END) as approved_count
+      FROM request r
+      WHERE 1=1 ${dateFilter};
+    `;
+
+    const statsResult = await pool.query(statsQuery);
+    const stats = statsResult.rows[0];
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        statistics: {
+          pending_count: parseInt(stats.pending_count),
+          approved_count: parseInt(stats.approved_count),
+          rejected_count: parseInt(stats.rejected_count)
+        },
+        timeframe: timeframe || 'lifetime'
+      }
+    });
+
+  } catch (err) {
+    console.error("Dashboard stats error:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch dashboard statistics",
+      message: err.message
+    });
+  }
+});
+ 
+// Get statistics for Admin (Class Teacher) dashboard - COUNTS ONLY
+app.get("/admin/dashboard-stats", async (req, res) => {
+  try {
+    const { uid, timeframe } = req.query;
+    
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        error: "Firebase UID is required"
+      });
+    }
+
+    // Simple date filter
+    let dateFilter = '';
+    if (timeframe === 'month') {
+      dateFilter = `AND r.created_at >= CURRENT_DATE - INTERVAL '30 days'`;
+    }
+
+    // Get admin name
+    const adminResult = await pool.query(
+      `SELECT name FROM admin WHERE firebase_uid = $1`, 
+      [uid]
+    );
+    
+    if (adminResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Admin not found"
+      });
+    }
+
+    // ✅ FIXED: Use LEFT JOIN to handle admin with no students/requests
+    const statsQuery = `
+      SELECT 
+        COALESCE(COUNT(CASE WHEN r.status = 'pending' THEN 1 END), 0) as pending_count,
+        COALESCE(COUNT(CASE WHEN r.status = 'approved' THEN 1 END), 0) as approved_count,
+        COALESCE(COUNT(CASE WHEN r.status = 'rejected' THEN 1 END), 0) as rejected_count
+      FROM admin a
+      LEFT JOIN class c ON a.admin_id = c.class_teacher_id
+      LEFT JOIN student s ON c.class_id = s.class_id
+      LEFT JOIN request r ON s.student_id = r.student_id ${dateFilter}
+      WHERE a.firebase_uid = $1
+    `;
+
+    // Run single query
+    const statsResult = await pool.query(statsQuery, [uid]);
+
+    // ✅ Safe response - only counts
+    return res.json({
+      success: true,
+      data: {
+        statistics: {
+          pending_count: parseInt(statsResult.rows[0]?.pending_count || 0),
+          approved_count: parseInt(statsResult.rows[0]?.approved_count || 0),
+          rejected_count: parseInt(statsResult.rows[0]?.rejected_count || 0)
+        },
+        admin_name: adminResult.rows[0].name
+      }
+    });
+
+  } catch (err) {
+    console.error("Dashboard error:", err.message);
+    console.error("Stack:", err.stack);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load dashboard",
+      details: err.message
+    });
+  }
+});
+
+// Simple endpoint to get permission letter URL
+// Simple endpoint to get permission letter URL
+app.get('/api/pdf/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    // Get file path from database
+    const query = `
+      SELECT minio_object_key, filename 
+      FROM permission_letter 
+      WHERE req_id = $1
+    `;
+    
+    const result = await pool.query(query, [requestId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const { minio_object_key, filename } = result.rows[0];
+
+    // Generate simple presigned URL (24 hours)
+    const url = await minioClient.presignedGetObject(
+      'permissionletters', 
+      minio_object_key, 
+      24 * 60 * 60
+    );
+
+    res.json({ 
+      success: true, 
+      url: url,
+      filename: filename 
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to get URL' });
+  }
+});
+
+app.get('/api/certificate/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    console.log('Certificate request for ID:', requestId);
+    
+    // Get certificate file path from database
+    const query = `
+      SELECT minio_object_key, filename 
+      FROM certificate 
+      WHERE req_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    
+    const result = await pool.query(query, [requestId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Certificate not found' 
+      });
+    }
+
+    const { minio_object_key, filename } = result.rows[0];
+
+    // Generate presigned URL for certificate bucket
+    const url = await minioClient.presignedGetObject(
+      'certificate', 
+      minio_object_key, 
+      24 * 60 * 60 // 24 hours
+    );
+
+    res.json({ 
+      success: true, 
+      url: url,
+      filename: filename 
+    });
+
+  } catch (error) {
+    console.error('Error in certificate endpoint:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get certificate URL',
+      details: error.message 
     });
   }
 });

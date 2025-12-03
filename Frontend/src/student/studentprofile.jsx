@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useParams, useNavigate } from "react-router-dom";
 import myImage from './assets/student.jpg';
-import "./studentprofile.css";
+import "./css/studentprofile.css";
 
 const Studentprofile = () => {
   const { uid } = useParams();
@@ -14,7 +14,7 @@ const Studentprofile = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         navigate("/login");
-      } else if (user.uid !== uid) {
+      } else if (user.uid != uid) {
         alert("You are not authorized to view this page");
         navigate("/unauthorized");
       }
@@ -25,39 +25,41 @@ const Studentprofile = () => {
   }, [uid, navigate]);
 
   if (loading) {
-    return <p>Loading...</p>; // don’t render the page yet
+    return <p>Loading...</p>; 
   }
 
   return (
     <>
     <div className="main">
       <div id="left">
-        <button className="profile" onClick={() => navigate("/profile")}>
+        <button className="profile" onClick={() => navigate("/student/profile")}>
           <img src={myImage} alt="profile"/>
         </button>
 
-        <button className="letter" onClick={() => navigate("/letter")}>
+        <button className="letter" onClick={() => navigate("/student/letter")}>
           Letter submission
         </button>
 
         <button
           className="Achievements"
-          onClick={() => navigate("/achievements")}
+          onClick={() => navigate("/student/achievements")}
         >
           Achievements
-        </button>
+          </button>
+        {/*
         <button
           className="Leaderboard"
-          onClick={() => navigate("/leaderboard")}
+          onClick={() => navigate("/student/leaderboard")}
         >
           Leaderboard
         </button>
+        */}
       </div>
 
       <div id="right">
         <button
           id="createevent"
-          onClick={() => navigate("/createevent")}
+          onClick={() => navigate("/student/createevent")}
         >
           +
         </button>
