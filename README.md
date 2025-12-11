@@ -4,7 +4,7 @@ Eventizer is a centralized platform designed to manage and organize permission l
 
 ---
 
-## ✨ Features
+##  Features
 
 - **Centralized Document Management** – Unified handling of permission letters and certificates.
 - **Clean & Organized Structure** – Documents remain easy to find, review, and track.
@@ -14,7 +14,7 @@ Eventizer is a centralized platform designed to manage and organize permission l
 
 ---
 
-## 🛠️ Technologies Used
+##  Technologies Used
 
 - **React** – Frontend UI  
 - **Express.js** – Backend API  
@@ -26,7 +26,7 @@ Eventizer is a centralized platform designed to manage and organize permission l
 
 ---
 
-## 🚀 How It Works (High-Level)
+##  How It Works (High-Level)
 
 1. Users/admins upload and manage certificates & permission letters.
 2. Files are securely stored in MinIO.
@@ -36,17 +36,19 @@ Eventizer is a centralized platform designed to manage and organize permission l
 
 ---
 
-## 📦 Installation & Setup
+##  Installation & Setup
 
 ### 1. Clone the repository
 ```bash
 git clone https://github.com/SS-Pradeep/Eventizer.git
 cd Eventizer
 
+## Server:
 cd backend
 npm install
 npm start
 
+## Frontend:
 cd frontend
 npm install
 npm run dev
