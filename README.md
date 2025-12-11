@@ -35,7 +35,8 @@ Eventizer is a centralized platform designed to manage and organize permission l
 5. React provides a smooth, intuitive interface for browsing documents.
 
 ---
-
+### Demo Link
+[Demo Video](https://youtu.be/4buDtvUQy3U?si=j0vQmiOT2zswrqTl)
 ##  Installation & Setup
 
 ### 1. Clone the repository
@@ -58,7 +59,6 @@ npm run dev
 
 
 ## 📁 Project Structure
-### Demo Link
-[Demo Video](https://youtu.be/4buDtvUQy3U?si=j0vQmiOT2zswrqTl)
+
 
 
