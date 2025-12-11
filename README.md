@@ -55,4 +55,7 @@ npm run dev
 
 
 ## 📁 Project Structure
+### Demo Link
+[![Eventizer Demo](https://img.youtube.com/vi/euzTD325qG4/0.jpg)](https://youtu.be/4buDtvUQy3U?si=j0vQmiOT2zswrqTl)
+Watch the live demo:https://youtu.be/4buDtvUQy3U?si=j0vQmiOT2zswrqTl [web:13]
 
