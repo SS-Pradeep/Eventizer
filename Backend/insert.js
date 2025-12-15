@@ -694,6 +694,87 @@ app.post('/upload-pdf', async (req, res) => {
 //uploading the pdf to minio bucket storage
 // PDF generation and upload endpoint
 
+app.post("/auto-request", async (req, res) => {
+  let client;
+
+  try {
+    const { uid, event_id } = req.body;
+
+    if (!uid || !event_id) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing uid or event_id",
+      });
+    }
+
+    client = await pool.connect();
+    await client.query("BEGIN");
+
+    // STEP 1: Get student ID
+    const studentQuery = `SELECT student_id FROM student WHERE firebase_uid = $1`;
+    const studentRes = await client.query(studentQuery, [uid]);
+
+    if (studentRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Student not found" });
+    }
+
+    const student_id = studentRes.rows[0].student_id;
+
+    // STEP 2: Check event exists and permission_required = false
+    const eventCheck = `
+      SELECT event_id, permission_required 
+      FROM event 
+      WHERE event_id = $1
+    `;
+    const eventRes = await client.query(eventCheck, [event_id]);
+
+    if (eventRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Event not found" });
+    }
+
+    if (eventRes.rows[0].permission_required === true) {
+      return res.status(400).json({
+        success: false,
+        error: "This event requires permission; use /upload-pdf instead.",
+      });
+    }
+
+    // STEP 3: Auto-create request (NO PERMISSION LETTER NEEDED)
+    const insertRequest = `
+      INSERT INTO request (student_id, event_id, status, current_stage, submitted_at, created_at, updated_at)
+      VALUES ($1, $2, 'approved', 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING request_id
+    `;
+
+    const requestRes = await client.query(insertRequest, [student_id, event_id]);
+
+    const request_id = requestRes.rows[0].request_id;
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      success: true,
+      message: "Auto request created successfully (permission not required)",
+      request_id: request_id,
+      event_id: event_id,
+      student_id: student_id,
+    });
+
+  } catch (err) {
+    console.error("AUTO REQUEST ERROR:", err);
+
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+    }
+
+    return res.status(500).json({ success: false, error: err.message });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 
 app.post('/upload-pdf', async (req, res) => {
   let client;
@@ -1657,7 +1738,8 @@ app.get("/certificateshow/:uid/:filter", async (req, res) => {
     const { uid, filter } = req.params;
     
     // Convert filter to boolean (assuming "true" or "false" string values)
-    const certificateUploaded = filter ;
+    const certificateUploaded = filter === "true";
+
     
     const query = `
   SELECT 
@@ -1695,15 +1777,6 @@ app.get("/certificateshow/:uid/:filter", async (req, res) => {
 
     const result = await pool.query(query, [uid, certificateUploaded]);
     
-    const qu = `
-    select event_name 
-    event_type,
-    end_date,
-    organizer,
-    from event 
-    where certificate_upload = $1 and permission_required = false
-    order by end_date desc
-    `;
     console.log(`Found ${result.rows.length} certificates for user ${uid}`);
     
     return res.status(200).json({
@@ -1720,9 +1793,10 @@ app.get("/certificateshow/:uid/:filter", async (req, res) => {
     });
   }
 });
+
 app.post("/upload-certificate/:eventId", upload.single("certificate"), async (req, res) => {
   let client;
-  
+
   try {
     client = await pool.connect();
     

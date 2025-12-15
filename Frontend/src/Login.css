@@ -5,158 +5,175 @@
 }
 
 .signupadmin {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: #f7f9fc;
-  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #f7f9fc, #eef1f6);
+  font-family: "Inter", Arial, sans-serif;
 }
 
+/* ================= CARD ================= */
 .Signupbaseadmin {
-  background: white;
-  padding: 40px 30px;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  width: 320px;
-  margin-bottom: 20px;
+  background: #ffffff;
+  width: 320px;              /* smaller */
+  padding: 28px 24px;        /* reduced padding */
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
   border-top: 4px solid #f04f4c;
 }
 
+/* ================= TITLE ================= */
 .Signupbaseadmin h1 {
   text-align: center;
-  color: #333;
-  margin-bottom: 30px;
-  font-size: 26px;
+  font-size: 22px;           /* smaller */
   font-weight: 600;
+  color: #222;
+  margin-bottom: 20px;
 }
 
+/* ================= FORM ================= */
 .signupformadmin {
   display: flex;
   flex-direction: column;
 }
 
 .signupformadmin label {
-  margin-bottom: 8px;
-  color: #555;
+  font-size: 12.5px;
   font-weight: 500;
-  font-size: 14px;
+  color: #555;
+  margin-bottom: 5px;
 }
 
-.Emailadmin, 
+/* ================= INPUTS ================= */
+.Emailadmin,
 .Passwordadmin {
-  padding: 12px 15px;
+  height: 40px;              /* smaller height */
+  padding: 0 12px;
+  border-radius: 7px;
   border: 1px solid #ddd;
-  border-radius: 6px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  transition: border-color 0.3s;
+  font-size: 13.5px;
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
 }
 
-.Emailadmin:focus, 
+.Emailadmin:focus,
 .Passwordadmin:focus {
   outline: none;
   border-color: #f04f4c;
-  box-shadow: 0 0 0 2px rgba(240, 79, 76, 0.1);
+  box-shadow: 0 0 0 2px rgba(240, 79, 76, 0.15);
 }
 
+/* ================= CONTINUE BUTTON ================= */
 .buttonforsignupadmin {
-  padding: 14px;
-  background: #f04f4c;
-  color: white;
+  height: 40px;              /* smaller */
+  border-radius: 7px;
   border: none;
-  border-radius: 6px;
+  background: #f04f4c;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: background 0.3s;
+  transition: background 0.2s ease;
 }
 
 .buttonforsignupadmin:hover {
   background: #e04440;
 }
 
+/* ================= FORGOT PASSWORD ================= */
+.forgot-password {
+  font-size: 12px;
+  margin-top: 10px;
+  text-align: right;
+  color: #f04f4c;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* ================= MESSAGES ================= */
+
+
+.auth-message.success {
+  background: #e6f4ea;
+  color: #0f5132;
+  border: 1px solid #badbcc;
+}
+
+.auth-error-text {
+  padding-top: 10px;;
+  color: #d93025; /* Google-style red */
+  text-align: center;
+}
+
+
+/* ================= GOOGLE BUTTON ================= */
 .Signupwithgoogleadmin {
-  width: 320px;
-  margin-bottom: 20px;
+  margin-top: 12px;
 }
 
 .googlesignupbuttonadmin {
   width: 100%;
-  padding: 12px;
-  background: white;
+  height: 40px;              /* smaller */
+  border-radius: 7px;
+  background: #fff;
   border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 500;
-  color: #555;
-  transition: all 0.3s;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .googlesignupbuttonadmin:hover {
   background: #f9f9f9;
-  border-color: #ccc;
 }
 
 .googlesignupbuttonadmin img {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
-.backs {
-  text-align: center;
+/* ================= PASSWORD SHOW / HIDE ================= */
+
+.password-wrapper {
+  position: relative;
+  width: 100%;
 }
 
-.back {
-  padding: 10px 25px;
-  background: transparent;
-  color: #f04f4c;
-  border: 2px solid #f04f4c;
-  border-radius: 6px;
+.Passwordadmin {
+  width: 100%;
+  padding-right: 48px; 
+}
+
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11.5px;     /* small */
+  color: #666;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s;
+  user-select: none;
 }
 
-.back:hover {
-  background: #f04f4c;
-  color: white;
+.toggle-password:hover {
+  color: #f04f4c;
 }
 
-.Signupbaseadmin p {
-  margin-top: 15px;
-  padding: 12px;
-  border-radius: 5px;
-  text-align: center;
-  font-size: 13px;
-}
 
-.Signupbaseadmin p:not([style*="color: red"]) {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.Signupbaseadmin p[style*="color: red"] {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
+/* ================= MOBILE ================= */
 @media (max-width: 480px) {
   .Signupbaseadmin {
-    width: 280px;
-    padding: 30px 25px;
-  }
-  
-  .Signupwithgoogleadmin {
-    width: 280px;
+    width: 90%;
+    padding: 24px 20px;
   }
 }

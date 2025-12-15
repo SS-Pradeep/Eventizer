@@ -35,7 +35,7 @@ const Createevent = () => {
       end_date: end_date,
       permissionrequired: needsPermission,
       event_level: event_level,
-      Certificate_upload: true, // ✅ ALL events require certificates
+      Certificate_upload: false, 
       organizer: Organizer
     };
 
@@ -61,11 +61,7 @@ const Createevent = () => {
       console.log('Event result:', eventResult);
       
       // ✅ If no permission required, navigate directly
-      if (!needsPermission) {
-        alert("Event created successfully! Certificate upload will be available after the event ends.");
-        navigate(`/student/${uid}`);
-        return;
-      }
+      
       
       // Get the event_id from response
       const event_id = eventResult.event_id;
@@ -82,6 +78,27 @@ const Createevent = () => {
         reason: description || `Participation in ${event_name}`,
       };
 
+      let autoRes;   // declare here
+      if (!needsPermission) {
+        try {
+          autoRes = await fetch("http://localhost:3000/auto-request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid: uid,
+              event_id: event_id
+            })
+          });} catch (alertError) {
+            console.log("Auto-request error:", alertError);
+          }
+          const autoData = await autoRes.json();
+          if (!autoData.success) {
+            alert("Auto request creation failed");
+            return;
+          }
+            navigate(`/student/${uid}`);
+            return;
+          }
       console.log('PDF data being sent:', pdf_data);
 
       const pdfResponse = await fetch("http://localhost:3000/upload-pdf", {

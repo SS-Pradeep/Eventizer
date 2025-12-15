@@ -54,7 +54,6 @@ const Achievements = () => {
     if (uid) fetchRequests();
   }, [uid, filter]);
 
-  // Enhanced PDF function to handle both permission letters and certificates
   const getPdfUrl = async (requestId, documentType) => {
     const key = `${requestId}-${documentType}`;
     
@@ -67,10 +66,8 @@ const Achievements = () => {
       
       let endpoint;
       if (documentType === 'permission') {
-        // For permission letters
         endpoint = `http://localhost:3000/api/pdf/${requestId}`;
       } else if (documentType === 'certificate') {
-        // For certificates
         endpoint = `http://localhost:3000/api/certificate/${requestId}`;
       }
       
@@ -141,7 +138,6 @@ const Achievements = () => {
 
       console.log("Upload success:", data);
       
-      // Refresh the current view
       const fetchRequests = async () => {
         const res = await fetch(`http://localhost:3000/certificateshow/${uid}/${filter}`);
         const response = await res.json();
@@ -167,14 +163,12 @@ const Achievements = () => {
       setExpandedId(requestId);
       setViewMode(mode);
       
-      // Auto-load PDF for both permission letters and certificates
       if (mode === 'permission' || mode === 'certificate') {
         await getPdfUrl(requestId, mode);
       }
     }
   };
 
-  // Enhanced PDF Viewer Component
   const PDFViewer = ({ requestId, title, type }) => {
     const key = `${requestId}-${type}`;
     const isLoading = loadingUrls[key];
@@ -215,7 +209,6 @@ const Achievements = () => {
 
     return (
       <div className="pdf-container">
-        {/* PDF Actions */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -263,7 +256,6 @@ const Achievements = () => {
           </div>
         </div>
 
-        {/* PDF Viewer */}
         <iframe
           src={pdfUrl}
           title={`${title} - ${type}`}
@@ -314,74 +306,48 @@ const Achievements = () => {
                   {req.organizer && <><br />Organizer: {req.organizer}</>}
                 </p>
 
-                {/* Action Buttons */}
-                <div className="action-buttons" style={{
-                  display: 'flex',
-                  gap: '10px',
-                  marginTop: '15px',
-                  flexWrap: 'wrap'
-                }}>
-                  {/* Permission Letter Button - Only show if request exists */}
-                  {req.request_id && (
-                    <button
-                      onClick={() => handleCardClick(req.request_id, 'permission')}
-                      style={{
-                        padding: '10px 15px',
-                        backgroundColor: expandedId === req.request_id && viewMode === 'permission' ? '#0056b3' : '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      📋 {expandedId === req.request_id && viewMode === 'permission' ? 'Hide' : 'View'} Permission Letter
-                    </button>
-                  )}
+                {/* ⭐ MODIFIED SECTION 1 — BUTTON OR "NO PERMISSION REQUIRED" */}
+                {req.permission_required === true && req.request_id ? (
+                  <button
+                    onClick={() => handleCardClick(req.request_id, 'permission')}
+                    style={{
+                      padding: '10px 15px',
+                      backgroundColor: expandedId === req.request_id && viewMode === 'permission' ? '#0056b3' : '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      transition: 'all 0.3s ease',
+                      marginRight: '10px'
+                    }}
+                  >
+                    📋 {expandedId === req.request_id && viewMode === 'permission' ? 'Hide' : 'View'} Permission Letter
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    style={{
+                      padding: '10px 15px',
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'not-allowed',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      opacity: 0.7,
+                      marginRight: '10px'
+                    }}
+                  >
+                    🚫 No Permission Required
+                  </button>
+                )}
 
-                  {/* Certificate Button Logic */}
-                  {!filter ? (
-                    // Show upload option for events that haven't uploaded certificates yet
-                    hasEventEnded(req.end_date) ? (
-                      <button
-                        onClick={() => handleCardClick(req.request_id || req.event_id, 'certificate')}
-                        style={{
-                          padding: '10px 15px',
-                          backgroundColor: expandedId === (req.request_id || req.event_id) && viewMode === 'certificate' ? '#218838' : '#28a745',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
-                        📤 {expandedId === (req.request_id || req.event_id) && viewMode === 'certificate' ? 'Hide' : 'Upload'} Certificate
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        style={{
-                          padding: '10px 15px',
-                          backgroundColor: '#6c757d',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'not-allowed',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          opacity: 0.6
-                        }}
-                        title="Certificate upload will be available after the event ends"
-                      >
-                        🔒 Upload Available After Event
-                      </button>
-                    )
-                  ) : (
-                    // Show view option for uploaded certificates
+                {/* Certificate Button Logic (unchanged) */}
+                {!filter ? (
+                  hasEventEnded(req.end_date) ? (
                     <button
                       onClick={() => handleCardClick(req.request_id || req.event_id, 'certificate')}
                       style={{
@@ -396,10 +362,45 @@ const Achievements = () => {
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      🏆 {expandedId === (req.request_id || req.event_id) && viewMode === 'certificate' ? 'Hide' : 'View'} Certificate
+                      📤 {expandedId === (req.request_id || req.event_id) && viewMode === 'certificate' ? 'Hide' : 'Upload'} Certificate
                     </button>
-                  )}
-                </div>
+                  ) : (
+                    <button
+                      disabled
+                      style={{
+                        padding: '10px 15px',
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'not-allowed',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        opacity: 0.6
+                      }}
+                      title="Certificate upload will be available after the event ends"
+                    >
+                      🔒 Upload Available After Event
+                    </button>
+                  )
+                ) : (
+                  <button
+                    onClick={() => handleCardClick(req.request_id || req.event_id, 'certificate')}
+                    style={{
+                      padding: '10px 15px',
+                      backgroundColor: expandedId === (req.request_id || req.event_id) && viewMode === 'certificate' ? '#218838' : '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    🏆 {expandedId === (req.request_id || req.event_id) && viewMode === 'certificate' ? 'Hide' : 'View'} Certificate
+                  </button>
+                )}
               </div>
 
               {expandedId === (req.request_id || req.event_id) && (
@@ -412,20 +413,37 @@ const Achievements = () => {
                   </div>
 
                   <div className="preview-body">
-                    {/* Permission Letter Viewer */}
-                    {viewMode === 'permission' && req.request_id && (
+
+                    {/* ⭐ MODIFIED SECTION 2 — INTERNAL PREVIEW HANDLING */}
+                    {req.permission_required === true &&
+                     viewMode === 'permission' &&
+                     req.request_id ? (
+                      
                       <PDFViewer 
                         requestId={req.request_id}
                         title={req.event_name}
                         type="permission"
                       />
-                    )}
 
-                    {/* Certificate Section */}
+                    ) : viewMode === 'permission' ? (
+
+                      <div style={{
+                        padding: "15px",
+                        backgroundColor: "#f8d7da",
+                        color: "#721c24",
+                        borderRadius: "6px",
+                        textAlign: "center",
+                        marginTop: "10px"
+                      }}>
+                        🚫 No Permission Required for this Event
+                      </div>
+
+                    ) : null}
+
+                    {/* CERTIFICATE VIEW BLOCK UNCHANGED */}
                     {viewMode === 'certificate' && (
                       <>
                         {!filter ? (
-                          // Upload mode - for events that haven't uploaded certificates
                           hasEventEnded(req.end_date) ? (
                             <div className="upload-section">
                               <h4>📤 Upload Certificate</h4>
@@ -434,7 +452,7 @@ const Achievements = () => {
                                   <input
                                     type="file"
                                     name="file"
-                                    accept="application/pdf,image/*"
+                                    accept="application/pdf"
                                     required
                                     style={{
                                       width: '100%',
@@ -445,7 +463,7 @@ const Achievements = () => {
                                     }}
                                   />
                                   <small style={{ color: '#666' }}>
-                                    Accepted formats: PDF, JPG, PNG (Max 5MB)
+                                    Accepted formats: PDF Only (Max 5MB)
                                   </small>
                                 </div>
                                 <button 
@@ -478,7 +496,6 @@ const Achievements = () => {
                             </div>
                           )
                         ) : (
-                          // View mode - show the uploaded certificate
                           <PDFViewer 
                             requestId={req.request_id || req.event_id}
                             title={req.event_name}
@@ -487,6 +504,7 @@ const Achievements = () => {
                         )}
                       </>
                     )}
+
                   </div>
                 </div>
               )}

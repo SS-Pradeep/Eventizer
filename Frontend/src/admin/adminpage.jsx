@@ -8,6 +8,7 @@ import {
   Legend,
   Title
 } from 'chart.js';
+import { onAuthStateChanged } from "firebase/auth";
 import myImage from './assets/student.jpg';
 import auth from '../config/firebase-config';
 import './css/adminpage.css';
@@ -34,7 +35,7 @@ const Adminpage = () => {
             
             const user = auth.currentUser;
             if (!user) {
-                setError('User not authenticated');
+                // Do NOT throw error here — just return silently.
                 return;
             }
 
@@ -73,8 +74,18 @@ const Adminpage = () => {
         }
     };
 
+    // ⭐ ADDED FIX — Firebase loads user AFTER refresh, so wait for it
     useEffect(() => {
-        fetchData(timeframe);
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                fetchData(timeframe); // call ONLY after firebase restores session
+            } else {
+                setError("User not authenticated");
+                setLoading(false);
+            }
+        });
+
+        return () => unsubscribe();
     }, [timeframe]);
 
     // Calculate total for chart display
@@ -197,13 +208,8 @@ const Adminpage = () => {
                 
                 {!error && (
                     <>
-                        {/* Statistics Summary */}
-                        <div className="stats-summary">
-                            
-                            
-                        </div>
+                        <div className="stats-summary"></div>
 
-                        {/* Chart */}
                         <div className="chart-container">
                             {totalRequests > 0 ? (
                                 <Pie data={chartData} options={chartOptions} />
@@ -222,7 +228,6 @@ const Adminpage = () => {
                             )}
                         </div>
 
-                        {/* Missing Certificates */}
                         {pendingCertificates.length > 0 && (
                             <div className="certificate-list">
                                 <h3>📋 Missing Certificates ({pendingCertificates.length})</h3>
@@ -239,15 +244,9 @@ const Adminpage = () => {
                                         </div>
                                     ))}
                                 </div>
-                                {pendingCertificates.length >= 10 && (
-                                    <p className="note">
-                                        <em>Showing first 10 students. There may be more.</em>
-                                    </p>
-                                )}
                             </div>
                         )}
 
-                        {/* Empty State for Certificates */}
                         {pendingCertificates.length === 0 && totalRequests > 0 && (
                             <div className="certificate-list">
                                 <div className="no-pending-certificates">
