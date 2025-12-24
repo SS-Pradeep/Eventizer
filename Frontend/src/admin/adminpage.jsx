@@ -74,7 +74,6 @@ const Adminpage = () => {
         }
     };
 
-    // ⭐ ADDED FIX — Firebase loads user AFTER refresh, so wait for it
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {

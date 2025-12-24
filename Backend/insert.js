@@ -2626,6 +2626,89 @@ app.get('/api/certificate/:requestId', async (req, res) => {
   }
 });
 
+app.get("/api/stats/certificates", async (req, res) => {
+  try {
+    const { year, section, timeline } = req.query;
+
+    if (!year || !section || !timeline) {
+      return res.status(400).json({ message: "Year, section, and timeline required" });
+    }
+
+    if (!year || !section) {
+      return res.status(400).json({ message: "Invalid class format" });
+    }
+
+    // 1️⃣ Get class_id
+    const classResult = await pool.query(
+      `SELECT class_id FROM class WHERE class_name = $1 AND section = $2`,
+      [year, section]
+    );
+
+    if (classResult.rows.length === 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const classId = classResult.rows[0].class_id;
+
+    // 2️⃣ Get student IDs
+    const studentsResult = await pool.query(
+      `SELECT student_id FROM student WHERE class_id = $1`,
+      [classId]
+    );
+
+    const studentIds = studentsResult.rows.map(r => r.student_id);
+    if (studentIds.length === 0) {
+      return res.json({ total_certificates: 0, categories: {} });
+    }
+
+    // 3️⃣ Get event IDs
+    const eventResult = await pool.query(
+      `SELECT DISTINCT event_id FROM request WHERE student_id = ANY($1)`,
+      [studentIds]
+    );
+
+    const eventIds = eventResult.rows.map(r => r.event_id);
+    if (eventIds.length === 0) {
+      return res.json({ total_certificates: 0, categories: {} });
+    }
+
+    // 4️⃣ Timeline condition
+    let timeCondition = "";
+    if (timeline !== "all") {
+      timeCondition = `AND updated_at >= NOW() - INTERVAL '${timeline} months'`;
+    }
+
+    // 5️⃣ Final aggregation
+    const finalQuery = `
+      SELECT event_type, COUNT(*) AS event_count
+      FROM event
+      WHERE certificate_upload = TRUE
+        AND event_id = ANY($1)
+        ${timeCondition}
+      GROUP BY event_type
+    `;
+
+    const finalResult = await pool.query(finalQuery, [eventIds]);
+
+    const categories = {};
+    let totalCertificates = 0;
+
+    finalResult.rows.forEach(row => {
+      categories[row.event_type] = Number(row.event_count);
+      totalCertificates += Number(row.event_count);
+    });
+
+    return res.json({
+      total_certificates: totalCertificates,
+      categories
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 const PORT = 3000;
 app.listen(PORT,()=>{
