@@ -1,122 +1,132 @@
-/* =========================
-   Certificate Stats – Compact UI
-   Theme Color: #f04f4c
-   ========================= */
-
-:root {
-  --primary: #f04f4c;
-  --primary-dark: #e04440;
-  --bg-light: #f9fafb;
-  --border: #e5e7eb;
-  --text-dark: #1f2937;
-  --text-muted: #6b7280;
-}
-
-/* Reset */
-* {
-  box-sizing: border-box;
+/* ================= PAGE WRAPPER ================= */
+.dashboard-container {
+  max-width: 900px;          /* ⬅️ stops full-page stretch */
+  margin: 20px auto;         /* center on screen */
+  padding: 16px;
   font-family: "Inter", Arial, sans-serif;
 }
 
-/* Main Container */
-.stats-container {
-  max-width: 820px;
-  margin: 25px auto;
-  padding: 20px;
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-}
-
-/* Title */
-.stats-title {
-  text-align: center;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 18px;
-  padding-bottom: 8px;
-  border-bottom: 3px solid var(--primary);
-}
-
-/* Controls */
-.stats-controls {
+/* ================= TABS ================= */
+.tabs {
   display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 16px;
+}
+
+.tab {
+  padding: 10px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #777;
+}
+
+.tab.active {
+  color: #1976d2;
+  border-bottom: 3px solid #1976d2;
+}
+
+/* ================= CARD STYLE ================= */
+.stats-container,
+.search-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* ================= STATS ================= */
+.stats-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .stats-controls select {
-  padding: 8px 12px;
-  font-size: 13px;
-  min-width: 140px;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  background: #ffffff;
-  transition: 0.2s ease;
-}
-
-.stats-controls select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(240, 79, 76, 0.25);
-}
-
-/* Loading */
-.stats-loading {
-  text-align: center;
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-}
-
-/* Total Certificates */
-.total-certificates {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: #ffffff;
-  padding: 14px;
+  padding: 9px 10px;
   border-radius: 8px;
-  text-align: center;
-  font-size: 17px;
-  font-weight: 700;
-  margin-bottom: 18px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  background: #fff;
 }
 
-/* Chart */
+.total-certificates {
+  text-align: center;
+  margin: 12px 0;
+  font-weight: 600;
+}
+
 .chart-wrapper {
   max-width: 360px;
   margin: 0 auto;
 }
 
-/* Hint Text */
-.stats-hint {
+/* ================= SEARCH ================= */
+.search-input {
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 14px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #1976d2;
+}
+
+/* ================= RESULTS ================= */
+.search-results {
+  list-style: none;
+  padding: 0;
   margin-top: 12px;
-  text-align: center;
+}
+
+.result-item {
+  padding: 12px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.result-item strong {
+  font-size: 14px;
+}
+
+.result-item p {
+  margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text-muted);
+  color: #666;
 }
 
-.stats-hint strong {
-  color: var(--primary);
+/* ================= EMPTY ================= */
+.empty-box {
+  margin-top: 16px;
+  padding: 12px;
+  text-align: center;
+  background: #e3f2fd;
+  color: #1565c0;
+  border-radius: 8px;
+  font-size: 14px;
 }
 
-/* Responsive */
+/* ================= MOBILE ================= */
 @media (max-width: 600px) {
-  .stats-container {
-    padding: 15px;
+  .dashboard-container {
+    padding: 10px;
   }
 
-  .stats-title {
-    font-size: 20px;
+  .tabs {
+    gap: 16px;
   }
 
-  .stats-controls select {
-    width: 100%;
+  .stats-controls {
+    grid-template-columns: 1fr; /* stack selects */
   }
 
   .chart-wrapper {
-    max-width: 300px;
+    max-width: 100%;
   }
 }

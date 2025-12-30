@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Pie } from "react-chartjs-2";
-import "./css/search.css";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -8,160 +7,225 @@ import {
   Legend,
 } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import "./css/search.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
-const CertificateStats = () => {
+const Search = () => {
+  /* ---------------- TAB STATE ---------------- */
+  const [activeTab, setActiveTab] = useState("stats");
+
+  /* ---------------- COMMON FILTERS ---------------- */
   const [year, setYear] = useState("");
   const [section, setSection] = useState("");
   const [timeline, setTimeline] = useState("all");
+
+  /* ---------------- STATS STATE ---------------- */
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
 
-  const fetchStats = async () => {
-    if (!year || !section) return;
+  /* ---------------- SEARCH STATE ---------------- */
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
 
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `http://localhost:3000/api/stats/certificates?year=${year}&section=${section}&timeline=${timeline}`
-      );
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  /* ---------------- FETCH STATS ---------------- */
   useEffect(() => {
+    if (!year || !section || activeTab !== "stats") return;
+
+    const fetchStats = async () => {
+      setLoadingStats(true);
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/stats/certificates?year=${year}&section=${section}&timeline=${timeline}`
+        );
+        const data = await res.json();
+        setStats(data);
+      } catch (err) {
+        console.error(err);
+        setStats(null);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
     fetchStats();
-  }, [year, section, timeline]);
+  }, [year, section, timeline, activeTab]);
 
-  const COLORS = [
-    "#FFA726",
-    "#66BB6A",
-    "#EF5350",
-    "#FFB74D",
-    "#81C784",
-  ];
+  /* ---------------- LIVE SEARCH ---------------- */
+  useEffect(() => {
+    if (
+      activeTab !== "search" ||
+      !query.trim() ||
+      !year ||
+      !section
+    ) {
+      setResults([]);
+      return;
+    }
 
-  const BORDER_COLORS = [
-    "#FF9800",
-    "#4CAF50",
-    "#F44336",
-    "#FB8C00",
-    "#43A047",
-  ];
+    const timer = setTimeout(async () => {
+      setLoadingSearch(true);
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/search/person?query=${query}&year=${year}&section=${section}`
+        );
+        const data = await res.json();
+        setResults(data);
+      } catch (err) {
+        console.error(err);
+        setResults([]);
+      } finally {
+        setLoadingSearch(false);
+      }
+    }, 300);
 
-  const HOVER_COLORS = [
-    "#FFCC80",
-    "#A5D6A7",
-    "#E57373",
-    "#FFD180",
-    "#C8E6C9",
-  ];
+    return () => clearTimeout(timer);
+  }, [query, year, section, activeTab]);
 
+  /* ---------------- PIE DATA ---------------- */
   const pieData =
-    stats && Object.keys(stats.categories).length > 0
+    stats && stats.categories
       ? {
           labels: Object.keys(stats.categories),
           datasets: [
             {
               data: Object.values(stats.categories),
-              backgroundColor: COLORS,
-              borderColor: BORDER_COLORS,
+              backgroundColor: [
+                "#FFA726",
+                "#66BB6A",
+                "#EF5350",
+                "#FFB74D",
+                "#81C784",
+              ],
               borderWidth: 2,
-              hoverBackgroundColor: HOVER_COLORS,
             },
           ],
         }
       : null;
 
-  const pieOptions = {
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: {
-          font: { size: 13 },
-          padding: 15,
-        },
-      },
-      datalabels: {
-        color: "#fff",
-        font: {
-          weight: "bold",
-          size: 14,
-        },
-        formatter: (value) => value,
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.label}: ${context.raw}`,
-        },
-      },
-    },
-  };
+  /* ---------------- FILTER DROPDOWNS ---------------- */
+  const Filters = () => (
+    <div className="stats-controls">
+      <select value={year} onChange={(e) => setYear(e.target.value)}>
+        <option value="">Select Year</option>
+        <option value="I">1st Year</option>
+        <option value="II">2nd Year</option>
+        <option value="III">3rd Year</option>
+        <option value="IV">4th Year</option>
+      </select>
 
-  return (
-    <div className="stats-container">
-      <h2 className="stats-title">📊 Class Certificate Statistics</h2>
+      <select value={section} onChange={(e) => setSection(e.target.value)}>
+        <option value="">Select Section</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+      </select>
 
-      {/* Controls */}
-      <div className="stats-controls">
-        <select value={year} onChange={(e) => setYear(e.target.value)}>
-          <option value="">Select Year</option>
-          <option value="I">1st Year</option>
-          <option value="II">2nd Year</option>
-          <option value="III">3rd Year</option>
-          <option value="IV">4th Year</option>
-          <option value="V">5th Year</option>
-        </select>
-
-        <select value={section} onChange={(e) => setSection(e.target.value)}>
-          <option value="">Select Section</option>
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-          <option value="No">No Section</option>
-        </select>
-
-        <select value={timeline} onChange={(e) => setTimeline(e.target.value)}>
+      {activeTab === "stats" && (
+        <select
+          value={timeline}
+          onChange={(e) => setTimeline(e.target.value)}
+        >
           <option value="3">Last 3 Months</option>
           <option value="6">Last 6 Months</option>
           <option value="9">Last 9 Months</option>
           <option value="12">Last 12 Months</option>
           <option value="all">All Time</option>
         </select>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="dashboard-container">
+      {/* ---------------- TABS ---------------- */}
+      <div className="tabs">
+        <button
+          className={activeTab === "stats" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("stats")}
+        >
+          STATS
+        </button>
+        <button
+          className={activeTab === "search" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("search")}
+        >
+          SEARCH
+        </button>
       </div>
 
-      {/* Loading */}
-      {loading && <p className="stats-loading">Loading statistics...</p>}
+      {/* ---------------- STATS TAB ---------------- */}
+      {activeTab === "stats" && (
+        <div className="stats-container">
+          <Filters />
 
-      {/* Stats Output */}
-      {!loading && stats && (
-        <>
-          <div className="total-certificates">
-            Total Certificates: {stats.total_certificates}
-          </div>
+          {loadingStats && <p>Loading statistics...</p>}
 
-          {pieData && (
-            <div className="chart-wrapper">
-              <Pie data={pieData} options={pieOptions} />
-            </div>
+          {!loadingStats && stats && (
+            <>
+              <div className="total-certificates">
+                Total Certificates: {stats.total_certificates}
+              </div>
+
+              {pieData && (
+                <div className="chart-wrapper">
+                  <Pie data={pieData} />
+                </div>
+              )}
+            </>
           )}
-        </>
+
+          {(!year || !section) && (
+            <p className="stats-hint">
+              Select <strong>Year</strong> and <strong>Section</strong>
+            </p>
+          )}
+        </div>
       )}
 
-      {(!year || !section) && (
-        <p className="stats-hint">
-          Please select both <strong>Year</strong> and <strong>Section</strong> to view statistics.
-        </p>
+      {/* ---------------- SEARCH TAB ---------------- */}
+      {activeTab === "search" && (
+        <div className="search-container">
+          <Filters />
+
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search student name / register number..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            disabled={!year || !section}
+          />
+
+          {(!year || !section) && (
+            <p className="stats-hint">
+              Select <strong>Year</strong> and <strong>Section</strong> to search
+            </p>
+          )}
+
+          {loadingSearch && <p>Searching...</p>}
+
+          {!loadingSearch &&
+            query &&
+            results.length === 0 &&
+            year &&
+            section && (
+              <div className="empty-box">No results found</div>
+            )}
+
+          <ul className="search-results">
+            {results.map((person) => (
+              <li key={person.id} className="result-item">
+                <strong>{person.name}</strong>
+                <p>{person.register_no}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
 };
 
-export default CertificateStats;
+export default Search;
