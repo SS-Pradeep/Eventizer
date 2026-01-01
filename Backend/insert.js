@@ -3,6 +3,7 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 const Minio = require('minio');
 const cors = require('cors');
+require("dotenv").config();
 const multer = require('multer');
 require('dotenv').config();
 const app = express();
@@ -14,20 +15,20 @@ app.use(cors({
 
   
 const minioClient = new Minio.Client({
-  endPoint: '127.0.0.1',
-  port: 9000,
-  useSSL: false,
-  accessKey: 'minioadmin',
-  secretKey: 'minioadmin'
+  endPoint: process.env.MINIO_ENDPOINT,
+  port: Number(process.env.MINIO_PORT),
+  useSSL: process.env.MINIO_USE_SSL === "true",
+  accessKey: process.env.MINIO_ACCESS_KEY,
+  secretKey: process.env.MINIO_SECRET_KEY,
 });
 
 
 const pool = new Pool({
-    host : '127.0.0.1',
-    user : 'postgres',
-    port : 5432,
-    password : 'Pradeep007', 
-    database : 'Demodb'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  port: Number(process.env.DB_PORT),
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
 
 pool.connect().then(()=>console.log("YEah.."));

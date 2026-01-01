@@ -1,17 +1,19 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import {initializeApp} from 'firebase/app';
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDLw0Rm5J5SS_rvVbGNM8QEY7eGQQ9Xu38",
-  authDomain: "eventizer-500af.firebaseapp.com",
-  projectId: "eventizer-500af",
-  storageBucket: "eventizer-500af.firebasestorage.app",
-  messagingSenderId: "727257688523",
-  appId: "1:727257688523:web:8e5b648d31d1fdbf21ae4e",
-  measurementId: "G-Y4FP956FJ1"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
-export default auth;
+export const auth = getAuth(app);
+export const provider = new GoogleAuthProvider();
+
+export default app;
