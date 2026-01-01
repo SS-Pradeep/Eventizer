@@ -5,7 +5,6 @@ const Minio = require('minio');
 const cors = require('cors');
 require("dotenv").config();
 const multer = require('multer');
-require('dotenv').config();
 const app = express();
 const upload = multer();
 app.use(express.json());
