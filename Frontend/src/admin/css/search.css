@@ -1,132 +1,191 @@
-/* ================= PAGE WRAPPER ================= */
+/* ================= ROOT ================= */
 .dashboard-container {
-  max-width: 900px;          /* ⬅️ stops full-page stretch */
-  margin: 20px auto;         /* center on screen */
   padding: 16px;
-  font-family: "Inter", Arial, sans-serif;
+  background: #f9fafb;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
 }
 
 /* ================= TABS ================= */
 .tabs {
   display: flex;
-  gap: 24px;
-  border-bottom: 1px solid #ddd;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
 .tab {
-  padding: 10px 4px;
-  font-size: 14px;
-  font-weight: 600;
-  background: none;
+  padding: 8px 18px;
   border: none;
+  border-radius: 6px;
+  background: #e5e7eb;
+  color: #111827;
   cursor: pointer;
-  color: #777;
+  font-weight: 500;
 }
 
 .tab.active {
-  color: #1976d2;
-  border-bottom: 3px solid #1976d2;
-}
-
-/* ================= CARD STYLE ================= */
-.stats-container,
-.search-container {
-  background: #fff;
-  border-radius: 12px;
-  padding: 18px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  background: #2563eb;
+  color: #ffffff;
 }
 
 /* ================= STATS ================= */
+.stats-container {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 8px;
+}
+
 .stats-controls {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
 .stats-controls select {
-  padding: 9px 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
   font-size: 14px;
-  background: #fff;
 }
 
 .total-certificates {
-  text-align: center;
-  margin: 12px 0;
   font-weight: 600;
+  margin-bottom: 12px;
 }
 
 .chart-wrapper {
-  max-width: 360px;
+  max-width: 420px;
   margin: 0 auto;
 }
 
 /* ================= SEARCH ================= */
+.search-container {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 8px;
+}
+
 .search-input {
   width: 100%;
-  padding: 11px 12px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
   font-size: 14px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+  margin-bottom: 10px;
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: #1976d2;
-}
-
-/* ================= RESULTS ================= */
+/* ================= SEARCH LIST ================= */
 .search-results {
   list-style: none;
   padding: 0;
-  margin-top: 12px;
+  margin: 0;
 }
 
 .result-item {
-  padding: 12px 10px;
-  border-bottom: 1px solid #eee;
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
 }
 
-.result-item strong {
-  font-size: 14px;
+.result-item:hover {
+  background: #f3f4f6;
 }
 
-.result-item p {
-  margin: 4px 0 0;
+.result-item.active {
+  background: #eef2ff;
+  border-left: 4px solid #2563eb;
+}
+
+.result-main strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.result-roll {
   font-size: 13px;
-  color: #666;
+  color: #4b5563;
+  margin-top: 2px;
 }
 
-/* ================= EMPTY ================= */
+/* ================= EMPTY / LOADING ================= */
 .empty-box {
-  margin-top: 16px;
   padding: 12px;
-  text-align: center;
-  background: #e3f2fd;
-  color: #1565c0;
-  border-radius: 8px;
+  color: #6b7280;
   font-size: 14px;
+}
+
+/* ================= EXCEL TABLE ================= */
+.excel-table-wrapper {
+  margin-top: 20px;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.excel-table-wrapper h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* FORCE REAL TABLE LAYOUT */
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #ffffff;
+}
+
+.excel-table thead {
+  display: table-header-group;
+}
+
+.excel-table tbody {
+  display: table-row-group;
+}
+
+.excel-table tr {
+  display: table-row;
+}
+
+.excel-table th,
+.excel-table td {
+  display: table-cell;
+  border: 1px solid #d1d5db;
+  padding: 10px;
+  text-align: left;
+  font-size: 14px;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+.excel-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+.excel-table tr:nth-child(even) {
+  background: #fafafa;
 }
 
 /* ================= MOBILE ================= */
-@media (max-width: 600px) {
-  .dashboard-container {
-    padding: 10px;
-  }
-
-  .tabs {
-    gap: 16px;
-  }
-
+@media (max-width: 768px) {
   .stats-controls {
-    grid-template-columns: 1fr; /* stack selects */
+    flex-direction: column;
   }
 
   .chart-wrapper {
     max-width: 100%;
+  }
+
+  .excel-table th,
+  .excel-table td {
+    font-size: 13px;
+    padding: 8px;
   }
 }

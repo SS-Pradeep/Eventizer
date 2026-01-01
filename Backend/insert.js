@@ -17,8 +17,8 @@ const minioClient = new Minio.Client({
   endPoint: '127.0.0.1',
   port: 9000,
   useSSL: false,
-  accessKey: 'pradeep',
-  secretKey: 'pradeepss007'
+  accessKey: 'minioadmin',
+  secretKey: 'minioadmin'
 });
 
 
@@ -2708,6 +2708,78 @@ app.get("/api/stats/certificates", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+app.get("/api/search/person", async (req, res) => {
+  try {
+    const { nameid } = req.query;
+    
+    let query = `
+      SELECT 
+  s.student_id,
+  s.name,
+  s.roll_number,
+  s.firebase_uid,
+  s.class_id,
+  c.class_name,
+  c.section
+FROM student s
+JOIN class c
+  ON s.class_id = c.class_id
+WHERE s.name ILIKE $1
+   OR s.roll_number ILIKE $1
+LIMIT 20;
+
+    `;
+    
+    const result = await pool.query(query, [`${nameid}%`]);
+
+
+    
+    return res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/student/:studentId/details", async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const sql = `
+      SELECT
+      r.request_id,
+      r.status AS request_status,
+      r.current_stage,
+
+      e.event_id,
+      e.event_name,
+      e.event_type,
+      e.created_at::date AS date,
+
+      c.certificate_id,
+      c.filename,
+      c.minio_object_key
+    FROM request r
+    JOIN event e
+      ON r.event_id = e.event_id
+    JOIN certificate c
+      ON c.req_id = r.request_id
+    WHERE r.student_id = $1
+    ORDER BY e.created_at DESC;
+
+    `;
+
+
+
+    const result = await pool.query(sql, [studentId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 
 const PORT = 3000;
