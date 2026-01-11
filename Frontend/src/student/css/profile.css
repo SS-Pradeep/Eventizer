@@ -1,0 +1,80 @@
+/* =========================
+   PAGE CONTAINER
+========================= */
+.profile-container {
+  display: flex;
+  justify-content: center;   /* horizontal center */
+  align-items: center;       /* vertical center */
+  padding: 32px;
+  background-color: #eaf7ff;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* =========================
+   STUDENT DETAILS (CENTER)
+========================= */
+.profile-details {
+  width: 420px;
+  text-align: center;
+}
+
+/* Student name */
+.student-name {
+  font-size: 26px;
+  font-weight: 600;
+  color: #0a2a43;
+  margin-bottom: 28px;
+}
+
+/* Each profile field */
+.detail {
+  margin-bottom: 14px;
+}
+
+.detail span {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  color: #6c8799;
+  text-transform: uppercase;
+}
+
+.detail p {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+/* =========================
+   REMOVE UNUSED PANEL
+========================= */
+.profile-extra {
+  display: none;
+}
+
+/* =========================
+   LOADING & ERROR
+========================= */
+.loading {
+  padding: 30px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.error {
+  padding: 30px;
+  font-size: 16px;
+  text-align: center;
+  color: red;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 900px) {
+  .profile-details {
+    width: 100%;
+  }
+}

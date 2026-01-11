@@ -155,7 +155,7 @@ const Home = () => {
         <>
             <div className="main">
                 <div id="adminleft">
-                    <button className="profile" onClick={() => navigate("/profile")}>
+                    <button className="profile" onClick={() => navigate("/superadmin/profile")}>
                         <img src={myImage} alt="profile"/>
                     </button>
                     <button className="btn" onClick={() => navigate('/superadmin/assignment')}>

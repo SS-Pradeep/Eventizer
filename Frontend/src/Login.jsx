@@ -47,6 +47,7 @@ function Login() {
     }
   } catch (err) {
     console.error("Error checking user:", err);
+    console.log(err);
     seterror("Something went wrong while checking your profile. Try again.");
   }
 };
@@ -126,7 +127,7 @@ const loginwithgoogle = async () => {
         <input type='email' className='Emailadmin' value={email} onChange={(e)=>setemail(e.target.value)} required/>
 
         <label>Password:</label>
-        <input type='password' className='Passwordadmin' value={password} onChange={(e)=>setpassword(e.target.value)} required/>
+        <input type='password' autoComplete="current-password" className='Passwordadmin' value={password} onChange={(e)=>setpassword(e.target.value)} required/>
 
   
 

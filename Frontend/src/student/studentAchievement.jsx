@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import auth from "../config/firebase-config";
+import {auth} from "../config/firebase-config";
 import './css/studentAchievement.css';
 
 const Achievements = () => {

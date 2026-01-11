@@ -2780,6 +2780,181 @@ app.get("/api/student/:studentId/details", async (req, res) => {
   }
 });
 
+app.delete("/requeststudent/delete", async (req, res) => {
+  try {
+    const { event_id } = req.body;
+
+    if (!event_id) {
+      return res.status(400).json({ message: "Event ID required" });
+    }
+
+    const result = await pool.query(
+      `DELETE FROM request WHERE event_id = $1`,
+      [event_id]
+    );
+
+    const result1 = await pool.query(
+      `DELETE FROM event WHERE event_id = $1`,
+      [event_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    return res.json({ message: "Request deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/student/profile/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+
+    if (!uid) {
+      return res.status(400).json({ message: "UID required" });
+    }
+    
+    const query = `
+  SELECT 
+    s.name            AS student_name,
+    s.email           AS student_email,
+    s.roll_number,
+    
+    c.class_id,
+    c.class_name,
+    c.section,
+    
+    a.admin_id        AS class_teacher_id,
+    a.name            AS teacher_name,
+    a.email           AS teacher_email
+
+  FROM student s
+  JOIN class c 
+    ON s.class_id = c.class_id
+  JOIN admin a 
+    ON c.class_teacher_id = a.admin_id
+
+  WHERE s.firebase_uid = $1
+`;
+    const result = await pool.query(query, [uid]);
+
+   
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching student profile:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/admin/profile/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+
+    if (!uid) {
+      return res.status(400).json({ message: "UID required" });
+    }
+
+    const query = `
+      SELECT
+        a.name,
+        a.email,
+        a.role,
+        c.class_name,
+        c.section
+      FROM admin a
+      LEFT JOIN class c
+        ON a.admin_id = c.class_teacher_id
+      WHERE a.firebase_uid = $1
+    `;
+
+    const result = await pool.query(query, [uid]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching admin profile:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/admin/profile/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+
+    if (!uid) {
+      return res.status(400).json({ message: "UID required" });
+    }
+
+    const adminQuery = `
+      SELECT admin_id, name, email, role
+      FROM admin
+      WHERE firebase_uid = $1
+    `;
+
+    const adminResult = await pool.query(adminQuery, [uid]);
+
+    if (adminResult.rows.length === 0) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    const { admin_id, name, email, role } = adminResult.rows[0];
+
+    if (role === "admin" || role === "super admin") {
+      return res.status(200).json({
+        name,
+        email,
+        class_name: "-",
+        section: "-",
+        role
+      });
+    }
+
+    if (role === "tutor") {
+      const classQuery = `
+        SELECT class_name, section
+        FROM class
+        WHERE class_teacher_id = $1
+      `;
+
+      const classResult = await pool.query(classQuery, [admin_id]);
+
+      if (classResult.rows.length === 0) {
+        return res.status(200).json({
+          name,
+          email,
+          class_name: "-",
+          section: "-",
+          role
+        });
+      }
+
+      return res.status(200).json({
+        name,
+        email,
+        class_name: classResult.rows[0].class_name,
+        section: classResult.rows[0].section,
+        role
+      });
+    }
+
+    return res.status(403).json({ message: "Unauthorized role" });
+
+  } catch (error) {
+    console.error("Error fetching admin profile:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 
 const PORT = 3000;

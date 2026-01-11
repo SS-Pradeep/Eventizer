@@ -6,7 +6,7 @@ import {
   sendPasswordResetEmail
 } from "firebase/auth";
 
-import auth from "./config/firebase-config";
+import {auth}  from "./config/firebase-config";
 import "./Login.css";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -116,6 +116,7 @@ function Auth() {
 
 
   const getAuthErrorMessage = (code) => {
+    console.log("Auth error code:", code);
   switch (code) {
     case "auth/invalid-credential":
     case "auth/wrong-password":

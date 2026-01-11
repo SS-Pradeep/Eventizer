@@ -352,3 +352,125 @@
     transform: translateY(0);
   }
 }
+/* ================= DELETE BUTTON ================= */
+.delete-btn {
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.delete-btn:active {
+  transform: scale(0.96);
+}
+
+/* ================= DELETE POPUP ================= */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeOverlay 0.2s ease-out;
+}
+
+.popup-box {
+  background: white;
+  padding: 25px;
+  width: 90%;
+  max-width: 420px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: scaleIn 0.25s ease-out;
+}
+
+.popup-box h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: #111827;
+}
+
+.popup-box p {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* ================= POPUP ACTIONS ================= */
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.popup-cancel {
+  padding: 8px 14px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.popup-cancel:hover {
+  background: #d1d5db;
+}
+
+.popup-delete {
+  padding: 8px 16px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.popup-delete:hover {
+  background: #b91c1c;
+}
+
+.popup-delete:disabled,
+.popup-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ================= ANIMATIONS ================= */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
