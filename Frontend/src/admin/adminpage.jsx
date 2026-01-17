@@ -27,6 +27,17 @@ const Adminpage = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
     const [adminName, setAdminName] = useState('');
+    useEffect(() => {
+  const handleBackButton = () => {
+    navigate("/", { replace: true }); 
+  };
+
+  window.addEventListener("popstate", handleBackButton);
+
+  return () => {
+    window.removeEventListener("popstate", handleBackButton);
+  };
+}, [navigate]);
 
     const fetchData = async (selectedTimeframe = 'lifetime') => {
         try {
@@ -182,7 +193,7 @@ const Adminpage = () => {
             
             <div id="adminright">
                 <div className="dashboard-header">
-                    <h2>📊 My Class Dashboard</h2>
+                    <h2>My Class Dashboard</h2>
                     <select 
                         value={timeframe} 
                         onChange={(e) => setTimeframe(e.target.value)}
@@ -195,12 +206,12 @@ const Adminpage = () => {
                 
                 {error && (
                     <div className="error">
-                        <strong>⚠️ Error:</strong> {error}
+                        <strong>Error:</strong> {error}
                         <button 
                             onClick={() => fetchData(timeframe)}
                             className="retry-btn"
                         >
-                            🔄 Retry
+                            Retry
                         </button>
                     </div>
                 )}
@@ -229,7 +240,7 @@ const Adminpage = () => {
 
                         {pendingCertificates.length > 0 && (
                             <div className="certificate-list">
-                                <h3>📋 Missing Certificates ({pendingCertificates.length})</h3>
+                                <h3>Missing Certificates ({pendingCertificates.length})</h3>
                                 <div className="certificates-grid">
                                     {pendingCertificates.map((student, index) => (
                                         <div key={index} className="student-item">
@@ -249,7 +260,7 @@ const Adminpage = () => {
                         {pendingCertificates.length === 0 && totalRequests > 0 && (
                             <div className="certificate-list">
                                 <div className="no-pending-certificates">
-                                    <span className="checkmark">✅</span>
+                                    <span className="checkmark"></span>
                                     <h3>Great! No Missing Certificates</h3>
                                     <p>All your students have uploaded their certificates on time.</p>
                                 </div>

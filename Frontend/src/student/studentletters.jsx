@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import auth from "../config/firebase-config";
 import "./css/studentletters.css";
 
 const Studentletters = () => {
-  const uid = auth.currentUser?.uid;
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [filter, setFilter] = useState("pending");
   const [requests, setRequests] = useState([]);
@@ -15,89 +17,106 @@ const Studentletters = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  /* ================= FETCH REQUESTS ================= */
+  /* ================= AUTH + FETCH ================= */
   useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(
-          `http://localhost:3000/requeststudent/${uid}?status=${filter}`
-        );
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthChecked(true);
 
-        if (!res.ok) {
-          throw new Error(`HTTP error ${res.status}`);
-        }
-
-        const response = await res.json();
-        if (response.success && response.data) {
-          setRequests(response.data);
-        } else {
-          setRequests([]);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setRequests([]);
-      } finally {
+      if (!currentUser) {
         setLoading(false);
+        setRequests([]);
+        return;
       }
-    };
 
-    if (uid) fetchRequests();
-  }, [uid, filter]);
+      fetchRequests(currentUser.uid, filter);
+    });
 
-  /* ================= OPEN DELETE POPUP ================= */
+    return () => unsubscribe();
+  }, [filter]);
+
+  const fetchRequests = async (uid, status) => {
+    try {
+      setLoading(true);
+
+      const res = await fetch(
+        `http://localhost:3000/requeststudent/${uid}?status=${status}`
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+
+      const response = await res.json();
+
+      if (response.success && response.data) {
+        setRequests(response.data);
+      } else {
+        setRequests([]);
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= DELETE POPUP ================= */
   const openDeletePopup = (e, req) => {
     e.stopPropagation();
     setDeleteTarget(req);
     setShowDeletePopup(true);
   };
 
-  /* ================= CONFIRM DELETE ================= */
   const confirmDelete = async () => {
-  if (!deleteTarget) return;
+    if (!deleteTarget || !user) return;
 
-  const target = deleteTarget;
+    const target = deleteTarget;
 
-  // CLOSE POPUP
-  setShowDeletePopup(false);
-  setDeleteTarget(null);
-
-  // REMOVE FROM UI
-  setRequests(prev =>
-    prev.filter(r => r.event_id !== target.event_id)
-  );
-  setExpandedId(null);
-
-  try {
-    setDeleting(true);
-
-    const res = await fetch(
-      `http://localhost:3000/requeststudent/delete`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(target),
-      }
+    // Optimistic UI update
+    setShowDeletePopup(false);
+    setDeleteTarget(null);
+    setRequests((prev) =>
+      prev.filter((r) => r.event_id !== target.event_id)
     );
+    setExpandedId(null);
 
-    if (!res.ok) {
-      throw new Error("Delete failed");
+    try {
+      setDeleting(true);
+
+      const res = await fetch(
+        `http://localhost:3000/requeststudent/delete`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(target),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Delete failed");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+    } finally {
+      setDeleting(false);
     }
+  };
 
-    // ✅ NO rollback
-  } catch (err) {
-    console.error("Delete error:", err);
-  } finally {
-    setDeleting(false);
+  /* ================= AUTH WAIT ================= */
+  if (!authChecked) {
+    return <div className="empty">Checking authentication…</div>;
   }
-};
 
+  if (!user) {
+    return <div className="empty">Please login to view requests.</div>;
+  }
 
+  /* ================= UI ================= */
   return (
     <div className="mainapproval">
-      {/* ================= TOP BAR ================= */}
+      {/* TOP BAR */}
       <div className="panelapprovaltop">
         <h2>My Permission Letters</h2>
         <select
@@ -111,7 +130,7 @@ const Studentletters = () => {
         </select>
       </div>
 
-      {/* ================= LIST ================= */}
+      {/* LIST */}
       <div className="letterslist">
         {loading ? (
           <div className="empty">Loading requests…</div>
@@ -138,7 +157,6 @@ const Studentletters = () => {
                       {req.permission_letter_status}
                     </span>
 
-                    {/* DELETE BUTTON ONLY FOR PENDING */}
                     {req.permission_letter_status === "pending" && (
                       <button
                         className="delete-btn"
@@ -173,7 +191,7 @@ const Studentletters = () => {
         )}
       </div>
 
-      {/* ================= DELETE POPUP ================= */}
+      {/* DELETE POPUP */}
       {showDeletePopup && (
         <div className="popup-overlay">
           <div className="popup-box">

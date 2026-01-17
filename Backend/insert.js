@@ -2832,9 +2832,9 @@ app.get("/api/student/profile/:uid", async (req, res) => {
     a.email           AS teacher_email
 
   FROM student s
-  JOIN class c 
+  LEFT JOIN class c 
     ON s.class_id = c.class_id
-  JOIN admin a 
+  LEFT JOIN admin a 
     ON c.class_teacher_id = a.admin_id
 
   WHERE s.firebase_uid = $1

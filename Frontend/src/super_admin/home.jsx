@@ -21,6 +21,18 @@ const Home = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+  const handleBackButton = () => {
+    navigate("/", { replace: true }); // signup / login route
+  };
+
+  window.addEventListener("popstate", handleBackButton);
+
+  return () => {
+    window.removeEventListener("popstate", handleBackButton);
+  };
+}, [navigate]);
+
     const fetchDashboardData = async (selectedTimeframe = 'lifetime') => {
         try {
             setLoading(true);

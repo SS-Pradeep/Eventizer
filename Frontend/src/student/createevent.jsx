@@ -169,14 +169,21 @@ const Createevent = () => {
           <br />
 
           <label>
-            Event Type:
-            <input
-              type="text"
-              value={eventype}
-              onChange={(e) => SetType(e.target.value)}
-              required
-            />
-          </label>
+  Event Type:
+  <select
+    value={eventype}
+    onChange={(e) => SetType(e.target.value)}
+    required
+  >
+    <option value="">Select event type</option>
+    <option value="Hackathon">Hackathon</option>
+    <option value="Paper Presentation">Paper Presentation</option>
+    <option value="Competitions">Competitions</option>
+    <option value="Non Technical">Non Technical</option>
+    <option value="Others">Others</option>
+  </select>
+</label>
+
           <br />
 
           <label>

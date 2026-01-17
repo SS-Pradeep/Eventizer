@@ -8,7 +8,17 @@ const Studentprofile = () => {
   const { uid } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true); 
+  useEffect(() => {
+  const handleBackButton = () => {
+    navigate("/", { replace: true }); // signup / login route
+  };
 
+  window.addEventListener("popstate", handleBackButton);
+
+  return () => {
+    window.removeEventListener("popstate", handleBackButton);
+  };
+}, [navigate]);
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {

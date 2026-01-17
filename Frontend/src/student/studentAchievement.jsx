@@ -3,12 +3,12 @@ import {auth} from "../config/firebase-config";
 import './css/studentAchievement.css';
 
 const Achievements = () => {
-  const uid = auth.currentUser?.uid;
   const [filter, setFilter] = useState(false); 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [viewMode, setViewMode] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
   
   const [pdfUrls, setPdfUrls] = useState({});
   const [loadingUrls, setLoadingUrls] = useState({});
@@ -24,10 +24,21 @@ const Achievements = () => {
   };
 
   useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged((user) => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const uid = user.uid;
+
     const fetchRequests = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:3000/certificateshow/${uid}/${filter}`);
+
+        const res = await fetch(
+          `http://localhost:3000/certificateshow/${uid}/${filter}`
+        );
 
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
@@ -35,7 +46,7 @@ const Achievements = () => {
 
         const response = await res.json();
         console.log("Fetched student requests:", response);
-        
+
         if (response.success && response.data) {
           setRequests(response.data);
         } else if (Array.isArray(response)) {
@@ -51,8 +62,12 @@ const Achievements = () => {
       }
     };
 
-    if (uid) fetchRequests();
-  }, [uid, filter]);
+    fetchRequests();
+  });
+
+  return () => unsubscribe();
+}, [filter]);
+
 
   const getPdfUrl = async (requestId, documentType) => {
     const key = `${requestId}-${documentType}`;
@@ -106,54 +121,54 @@ const Achievements = () => {
   };
 
   const handleSubmit = async (e, eventId) => {
-    e.preventDefault();
-    
-    console.log('🚀 Starting upload for eventId:', eventId);
+  e.preventDefault();
 
-    const fileInput = e.target.elements.file;
-    if (!fileInput.files.length) {
-      return;
-    }
+  const fileInput = e.target.elements.file;
+  if (!fileInput.files.length) return;
 
-    const file = fileInput.files[0];
-    
-    if (file.size > 5 * 1024 * 1024) {
-      return;
-    }
+  const file = fileInput.files[0];
 
-    const formData = new FormData();
-    formData.append("certificate", file);
+  if (file.size > 5 * 1024 * 1024) {
+    setUploadError("File size must be less than 5 MB");
+    return;
+  }
 
-    try {
-      const res = await fetch(`http://localhost:3000/upload-certificate/${eventId}`, {
+  setUploadError(null);
+
+  const formData = new FormData();
+  formData.append("certificate", file);
+
+  try {
+    const res = await fetch(
+      `http://localhost:3000/upload-certificate/${eventId}`,
+      {
         method: "POST",
         body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || data.details || "Upload failed");
       }
+    );
 
-      console.log("Upload success:", data);
-      
-      const fetchRequests = async () => {
-        const res = await fetch(`http://localhost:3000/certificateshow/${uid}/${filter}`);
-        const response = await res.json();
-        
-        if (response.success && response.data) {
-          setRequests(response.data);
-        } else if (Array.isArray(response)) {
-          setRequests(response);
-        }
-      };
-      
-      await fetchRequests();
-    } catch (err) {
-      console.error("Upload error:", err);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Upload failed");
     }
-  };
+
+    /* ✅ ONLY FIX: update UI immediately */
+    setRequests(prev =>
+      prev.filter(
+        r => (r.request_id || r.event_id) !== eventId
+      )
+    );
+
+    setExpandedId(null);
+    setViewMode(null);
+
+  } catch (err) {
+    console.error("Upload error:", err);
+    setUploadError("Upload failed");
+  }
+};
+
 
   const handleCardClick = async (requestId, mode) => {
     if (expandedId === requestId && viewMode === mode) {
@@ -454,6 +469,7 @@ const Achievements = () => {
                                     name="file"
                                     accept="application/pdf"
                                     required
+                                    onChange={() => setUploadError(null)}
                                     style={{
                                       width: '100%',
                                       padding: '8px',
@@ -461,10 +477,17 @@ const Achievements = () => {
                                       borderRadius: '6px',
                                       marginBottom: '10px'
                                     }}
+                                    
                                   />
                                   <small style={{ color: '#666' }}>
                                     Accepted formats: PDF Only (Max 5MB)
                                   </small>
+                                  {uploadError && (
+  <p style={{ color: "red", fontSize: "14px", marginTop: "6px" }}>
+    {uploadError}
+  </p>
+)}
+
                                 </div>
                                 <button 
                                   type="submit"
